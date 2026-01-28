@@ -1,4 +1,4 @@
-package az.fitnest.notificationsservice.entity;
+package az.fitnest.notifications.counter.domain.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

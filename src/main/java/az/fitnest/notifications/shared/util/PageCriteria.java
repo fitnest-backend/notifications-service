@@ -1,4 +1,4 @@
-package az.fitnest.notificationsservice.criteria;
+package az.fitnest.notifications.shared.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AccessLevel;

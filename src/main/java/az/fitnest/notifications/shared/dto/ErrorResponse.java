@@ -1,4 +1,4 @@
-package az.fitnest.notificationsservice.dto.common;
+package az.fitnest.notifications.shared.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,4 +1,4 @@
-package az.fitnest.notificationsservice;
+package az.fitnest.notifications;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

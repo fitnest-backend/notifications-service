@@ -1,4 +1,4 @@
-package az.fitnest.notificationsservice.exception;
+package az.fitnest.notifications.shared.exception;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
-import az.fitnest.notificationsservice.dto.common.ErrorResponse;
+import az.fitnest.notifications.shared.dto.ErrorResponse;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
