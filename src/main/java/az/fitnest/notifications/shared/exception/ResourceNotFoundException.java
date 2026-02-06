@@ -1,4 +1,4 @@
-package az.fitnest.notificationsservice.exception;
+package az.fitnest.notifications.shared.exception;
 
 import org.springframework.http.HttpStatus;
 
