@@ -6,6 +6,7 @@ import az.fitnest.notifications.exceptions.SmsSendException;
 import az.fitnest.notifications.properties.LsimSmsProperties;
 import az.fitnest.notifications.shared.dto.LsimApiResponse;
 import az.fitnest.notifications.shared.dto.LsimSendSmsRequest;
+import az.fitnest.notifications.shared.dto.SmsStatus;
 import az.fitnest.notifications.shared.util.LsimHashUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -107,19 +108,29 @@ public class LsimSmsService {
         }
     }
 
-    public Integer getDeliveryStatus(Long transactionId) {
+    public SmsStatus getDeliveryStatus(Long transactionId) {
         String url = "/apps.lsim.az/quicksms/v1/report?login={login}&trans_id={trans_id}";
+
         LsimApiResponse response = webClient.get()
                 .uri(url, properties.getLogin(), transactionId)
                 .retrieve()
                 .bodyToMono(LsimApiResponse.class)
                 .block();
 
-        if (response == null || response.getErrorCode() != null && response.getErrorCode() != 0) {
-            throw new SmsReportException("Report failed: " +
-                    (response != null ? response.getErrorMessage() : "no response"));
+        if (response == null) {
+            throw new SmsReportException("Empty response from LSIM");
         }
-        // response.getObj() contains the status code (100-109)
-        return response.getObj().intValue();
+
+        if (response.getErrorCode() != null && response.getErrorCode() != 0) {
+            throw new SmsReportException("Report failed: " + response.getErrorMessage(),
+                    response.getErrorCode());
+        }
+
+        Integer statusCode = response.getObj().intValue();  // 100-109
+        SmsStatus status = SmsStatus.fromCode(statusCode);
+        if (status == null) {
+            throw new SmsReportException("Unknown status code: " + statusCode);
+        }
+        return status;
     }
 }
