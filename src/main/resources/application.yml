@@ -129,7 +129,8 @@ springdoc:
   default-produces-media-type: application/json
   writer-with-default-pretty-printer: false
 
-# lsim
+ # Lsim-sms
+
 lsim:
   sms:
     base-url: https://apps.lsim.az
