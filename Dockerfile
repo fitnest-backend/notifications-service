@@ -4,6 +4,7 @@ FROM gradle:8.5.0-jdk17 AS builder
 WORKDIR /app
 
 # Cache dependencies
+
 COPY gradlew .
 COPY gradle gradle
 COPY build.gradle settings.gradle ./
