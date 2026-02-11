@@ -1,13 +1,13 @@
 package az.fitnest.notifications.service;
 
-import az.fitnest.notifications.exceptions.SmsBalanceException;
-import az.fitnest.notifications.exceptions.SmsReportException;
-import az.fitnest.notifications.exceptions.SmsSendException;
-import az.fitnest.notifications.properties.LsimSmsProperties;
-import az.fitnest.notifications.shared.dto.LsimApiResponse;
-import az.fitnest.notifications.shared.dto.LsimSendSmsRequest;
-import az.fitnest.notifications.shared.dto.SmsStatus;
-import az.fitnest.notifications.shared.util.LsimHashUtil;
+import az.fitnest.notifications.exception.SmsBalanceException;
+import az.fitnest.notifications.exception.SmsReportException;
+import az.fitnest.notifications.exception.SmsSendException;
+import az.fitnest.notifications.configuration.LsimSmsProperties;
+import az.fitnest.notifications.dto.LsimApiResponse;
+import az.fitnest.notifications.dto.LsimSendSmsRequest;
+import az.fitnest.notifications.dto.SmsStatus;
+import az.fitnest.notifications.util.LsimHashUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;

@@ -1,7 +1,7 @@
 package az.fitnest.notifications.controller;
 
 import az.fitnest.notifications.service.LsimSmsService;
-import az.fitnest.notifications.shared.dto.*;
+import az.fitnest.notifications.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

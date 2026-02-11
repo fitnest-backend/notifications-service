@@ -1,6 +1,6 @@
 package az.fitnest.notifications;
 
-import az.fitnest.notifications.properties.LsimSmsProperties;
+import az.fitnest.notifications.configuration.LsimSmsProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
