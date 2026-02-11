@@ -46,7 +46,7 @@ public class LsimSmsService {
 
         // 3. Make POST call
         LsimApiResponse response = webClient.post()
-                .uri(properties.getBaseUrl() + "/apps.lsim.az/quicksms/v1/smssender")
+                .uri("/quicksms/v1/smssender")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .retrieve()
@@ -109,7 +109,7 @@ public class LsimSmsService {
     }
 
     public SmsStatus getDeliveryStatus(Long transactionId) {
-        String url = "/apps.lsim.az/quicksms/v1/report?login={login}&trans_id={trans_id}";
+        String url = "/quicksms/v1/report?login={login}&trans_id={trans_id}";
 
         LsimApiResponse response = webClient.get()
                 .uri(url, properties.getLogin(), transactionId)
