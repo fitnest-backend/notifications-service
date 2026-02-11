@@ -13,7 +13,6 @@ public class WebClientConfig {
     public WebClient lsimWebClient(LsimSmsProperties props) {
         return WebClient.builder()
                 .baseUrl(props.getBaseUrl())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
     }
 }

@@ -72,9 +72,7 @@ public class LsimSmsService {
                        properties.getDefaultUnicode(), "NOW");
     }
     public Integer checkBalance() {
-        String md5Password = DigestUtils.md5Hex(properties.getPassword());
-        String concat = md5Password + properties.getLogin();
-        String key = DigestUtils.md5Hex(concat);
+        String key = LsimHashUtil.generateBalanceKey(properties.getPassword(), properties.getLogin());
 
         String url = "/quicksms/v1/balance?login={login}&key={key}";
         LsimApiResponse response = webClient.get()
@@ -83,11 +81,14 @@ public class LsimSmsService {
                 .bodyToMono(LsimApiResponse.class)
                 .block();
 
-        if (response == null || response.getErrorCode() != null && response.getErrorCode() != 0) {
-            throw new SmsBalanceException("Balance check failed: " +
-                    (response != null ? response.getErrorMessage() : "no response"));
+        if (response == null || (response.getErrorCode() != null && response.getErrorCode() != 0)) {
+            String errorMsg = response != null ? 
+                String.format("LSIM error %d: %s", response.getErrorCode(), response.getErrorMessage()) : 
+                "no response";
+            log.error("Balance check failed: {}", errorMsg);
+            throw new SmsBalanceException("Balance check failed: " + errorMsg);
         }
-        return response.getObj().intValue(); // obj is long but actually integer
+        return response.getObj() != null ? response.getObj().intValue() : 0;
     }
 
 
