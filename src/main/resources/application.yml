@@ -134,7 +134,7 @@ springdoc:
 lsim:
   sms:
     base-url: https://apps.lsim.az
-    login: YOUR_LOGIN
-    password: YOUR_PASSWORD
-    default-sender: YOUR_SENDER  # will be supplied by provider
+    login: ${SMS_LOGIN:YOUR_LOGIN}
+    password: ${SMS_PASSWORD:YOUR_PASSWORD}
+    default-sender: ${SMS_SENDER:YOUR_SENDER}  # will be supplied by provider
     default-unicode: false
