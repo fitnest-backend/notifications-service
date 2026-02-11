@@ -76,7 +76,7 @@ public class LsimSmsService {
         String concat = md5Password + properties.getLogin();
         String key = DigestUtils.md5Hex(concat);
 
-        String url = "/apps.lsim.az/quicksm/s/v1/balance?login={login}&key={key}";
+        String url = "/quicksms/v1/balance?login={login}&key={key}";
         LsimApiResponse response = webClient.get()
                 .uri(url, properties.getLogin(), key)
                 .retrieve()
