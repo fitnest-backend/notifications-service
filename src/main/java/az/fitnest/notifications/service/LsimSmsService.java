@@ -5,6 +5,7 @@ import az.fitnest.notifications.exception.SmsReportException;
 import az.fitnest.notifications.exception.SmsSendException;
 import az.fitnest.notifications.configuration.LsimSmsProperties;
 import az.fitnest.notifications.dto.LsimApiResponse;
+import az.fitnest.notifications.dto.LsimReportRequest;
 import az.fitnest.notifications.dto.LsimSendSmsRequest;
 import az.fitnest.notifications.dto.SmsStatus;
 import az.fitnest.notifications.util.LsimHashUtil;
@@ -118,6 +119,27 @@ public class LsimSmsService {
                 .bodyToMono(LsimApiResponse.class)
                 .block();
 
+        return handleReportResponse(response);
+    }
+
+    public SmsStatus getDeliveryStatusPost(Long transactionId) {
+        LsimReportRequest request = LsimReportRequest.builder()
+                .login(properties.getLogin())
+                .transid(transactionId)
+                .build();
+
+        LsimApiResponse response = webClient.post()
+                .uri("/quicksms/v1/smsreporter")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(LsimApiResponse.class)
+                .block();
+
+        return handleReportResponse(response);
+    }
+
+    private SmsStatus handleReportResponse(LsimApiResponse response) {
         if (response == null) {
             throw new SmsReportException("Empty response from LSIM");
         }
@@ -125,6 +147,10 @@ public class LsimSmsService {
         if (response.getErrorCode() != null && response.getErrorCode() != 0) {
             throw new SmsReportException("Report failed: " + response.getErrorMessage(),
                     response.getErrorCode());
+        }
+
+        if (response.getObj() == null) {
+            throw new SmsReportException("No status code in LSIM response");
         }
 
         Integer statusCode = response.getObj().intValue();  // 100-109
