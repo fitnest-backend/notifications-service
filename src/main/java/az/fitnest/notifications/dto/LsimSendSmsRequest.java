@@ -15,6 +15,8 @@ public class LsimSendSmsRequest {
     private String msisdn;
     private String text;
     private String sender;
+    @Builder.Default
     private String scheduled = "NOW";   // or "2025-03-25 14:30:00"
+    @Builder.Default
     private Boolean unicode = false;
 }
