@@ -3,6 +3,7 @@ plugins {
 	id 'org.springframework.boot' version '3.4.1'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'com.google.protobuf' version '0.9.4'
+	id 'maven-publish'
 }
 
 group = 'az.fitnest'
@@ -83,4 +84,31 @@ protobuf {
 			grpc {}
 		}
 	}
+}
+
+task protoJar(type: Jar) {
+    from sourceSets.main.java
+    include 'az/fitnest/notifications/grpc/**'
+    archiveClassifier = 'proto'
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifact protoJar
+            groupId = 'az.fitnest'
+            artifactId = 'notifications-proto'
+            version = '1.0.0'
+        }
+    }
+    repositories {
+        maven {
+            name = 'GitHubPackages'
+            url = 'https://maven.pkg.github.com/fitnest-backend/notifications-service'
+            credentials {
+                username = System.getenv('GITHUB_ACTOR')
+                password = System.getenv('GITHUB_TOKEN')
+            }
+        }
+    }
 }
