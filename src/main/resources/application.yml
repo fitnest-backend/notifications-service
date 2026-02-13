@@ -138,3 +138,12 @@ lsim:
     password: ${SMS_PASSWORD:YOUR_PASSWORD}
     default-sender: ${SMS_SENDER:YOUR_SENDER}  # will be supplied by provider
     default-unicode: false
+
+grpc:
+  server:
+    port: 9090
+    security:
+      enabled: ${GRPC_TLS_ENABLED:false}
+      certificate-chain: ${GRPC_SERVER_CERT:}
+      private-key: ${GRPC_SERVER_KEY:}
+      trust-cert-collection: ${GRPC_TRUST_CERT:}
