@@ -10,6 +10,20 @@ service NotificationsService {
   rpc SendSMS (SendSMSRequest) returns (SendSMSResponse);
   rpc SendHtmlEmail (SendHtmlEmailRequest) returns (SendEmailResponse);
   rpc SendSimpleEmail (SendSimpleEmailRequest) returns (SendEmailResponse);
+  rpc SendPushNotification (SendPushNotificationRequest) returns (SendPushNotificationResponse);
+}
+
+message SendPushNotificationRequest {
+  int64 user_id = 1;
+  string title = 2;
+  string body = 3;
+  map<string, string> data = 4;
+}
+
+message SendPushNotificationResponse {
+  bool success = 1;
+  string error_message = 2;
+  int32 target_devices = 3;
 }
 
 message SendSMSRequest {

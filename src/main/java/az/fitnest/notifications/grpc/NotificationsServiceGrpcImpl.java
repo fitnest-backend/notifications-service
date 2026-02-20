@@ -17,6 +17,7 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
 
     private final LsimSmsService lsimSmsService;
     private final EmailService emailService;
+    private final az.fitnest.notifications.service.NotificationService notificationService;
 
     @Override
     public void sendSMS(SendSMSRequest request, StreamObserver<SendSMSResponse> responseObserver) {
@@ -108,6 +109,39 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             log.error("Failed to send simple email", e);
 
             SendEmailResponse response = SendEmailResponse.newBuilder()
+                    .setSuccess(false)
+                    .setErrorMessage(e.getMessage())
+                    .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+    }
+
+    @Override
+    public void sendPushNotification(SendPushNotificationRequest request, StreamObserver<SendPushNotificationResponse> responseObserver) {
+        try {
+            Long userId = request.getUserId();
+            String title = request.getTitle();
+            String body = request.getBody();
+            Map<String, String> data = request.getDataMap();
+
+            log.info("Sending push notification to user {}: {}", userId, title);
+
+            int sentCount = notificationService.sendPushToUser(userId, title, body, data);
+
+            SendPushNotificationResponse response = SendPushNotificationResponse.newBuilder()
+                    .setSuccess(true)
+                    .setTargetDevices(sentCount)
+                    .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+
+        } catch (Exception e) {
+            log.error("Failed to send push notification", e);
+
+            SendPushNotificationResponse response = SendPushNotificationResponse.newBuilder()
                     .setSuccess(false)
                     .setErrorMessage(e.getMessage())
                     .build();
