@@ -7,7 +7,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "notification_counters")
+@Table(name = "notification_counters", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_notification_counters_user_id", columnNames = {"user_id"})
+})
 @Getter
 @Setter
 @NoArgsConstructor
