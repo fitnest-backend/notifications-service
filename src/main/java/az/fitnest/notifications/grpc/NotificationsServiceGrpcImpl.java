@@ -128,11 +128,11 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
 
             log.info("Sending push notification to user {}: {}", userId, title);
 
-            int sentCount = notificationService.sendPushToUser(userId, title, body, data);
+            az.fitnest.notifications.dto.PushResult result = notificationService.sendPushToUser(userId, title, body, data);
 
             SendPushNotificationResponse response = SendPushNotificationResponse.newBuilder()
                     .setSuccess(true)
-                    .setTargetDevices(sentCount)
+                    .setTargetDevices(result.getSentCount())
                     .build();
 
             responseObserver.onNext(response);
@@ -148,6 +148,43 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
 
             responseObserver.onNext(response);
             responseObserver.onCompleted();
+        }
+    }
+
+    @Override
+    public void getNotifications(GetNotificationsRequest request, StreamObserver<GetNotificationsResponse> responseObserver) {
+        try {
+            Long userId = request.getUserId();
+            int page = request.getPage() >= 0 ? request.getPage() : 0;
+            int size = request.getSize() > 0 ? request.getSize() : 20;
+
+            log.info("Retrieving notifications for user: {} page: {} size: {}", userId, page, size);
+
+            org.springframework.data.domain.Page<az.fitnest.notifications.dto.NotificationDto> notificationPage =
+                    notificationService.getUserNotifications(userId, org.springframework.data.domain.PageRequest.of(page, size));
+
+            java.util.List<NotificationDto> notifications = notificationPage.getContent().stream()
+                    .map(dto -> NotificationDto.newBuilder()
+                            .setId(dto.getId())
+                            .setTitle(dto.getTitle())
+                            .setBody(dto.getBody())
+                            .setIsRead(dto.isRead())
+                            .setCreatedAt(dto.getCreatedAt() != null ? dto.getCreatedAt().toString() : "")
+                            .build())
+                    .collect(java.util.stream.Collectors.toList());
+
+            GetNotificationsResponse response = GetNotificationsResponse.newBuilder()
+                    .addAllNotifications(notifications)
+                    .setCurrentPage(notificationPage.getNumber())
+                    .setTotalPages(notificationPage.getTotalPages())
+                    .setTotalElements(notificationPage.getTotalElements())
+                    .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            log.error("Failed to retrieve notifications", e);
+            responseObserver.onError(io.grpc.Status.INTERNAL.withDescription(e.getMessage()).withCause(e).asRuntimeException());
         }
     }
 }

@@ -2,6 +2,8 @@ package az.fitnest.notifications.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -27,4 +29,17 @@ public class Notification extends BaseAuditableEntity {
 
     @Column(name = "is_read", nullable = false)
     private boolean isRead = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private NotificationStatus status = NotificationStatus.PENDING;
+
+    @Column(name = "sent_count", nullable = false)
+    private int sentCount = 0;
+
+    @Column(name = "failed_count", nullable = false)
+    private int failedCount = 0;
+
+    @Column(name = "failure_reason")
+    private String failureReason;
 }

@@ -1,16 +1,44 @@
 package az.fitnest.notifications.service;
 
+import az.fitnest.notifications.dto.DeviceRegistrationRequest;
+import az.fitnest.notifications.dto.NotificationDto;
+import az.fitnest.notifications.dto.PushResult;
+import az.fitnest.notifications.entity.Device;
+import az.fitnest.notifications.entity.Notification;
+import az.fitnest.notifications.entity.NotificationStatus;
+import az.fitnest.notifications.repository.DeviceRepository;
+import az.fitnest.notifications.repository.NotificationRepository;
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.AndroidNotification;
+import com.google.firebase.messaging.ApnsConfig;
+import com.google.firebase.messaging.Aps;
+import com.google.firebase.messaging.BatchResponse;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
+import com.google.firebase.messaging.MulticastMessage;
+import com.google.firebase.messaging.SendResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class NotificationService {
     private final LsimSmsService lsimSmsService;
-    private final az.fitnest.notifications.repository.DeviceRepository deviceRepository;
-    private final az.fitnest.notifications.repository.NotificationRepository notificationRepository;
+    private final DeviceRepository deviceRepository;
+    private final NotificationRepository notificationRepository;
+    private final FirebaseMessaging firebaseMessaging;
 
     public void sendWelcomeSms(String phoneNumber) {
         String message = "Welcome to our service!";
@@ -18,87 +46,200 @@ public class NotificationService {
         log.info("SMS sent, transaction ID: {}", transactionId);
     }
 
-    public void registerDevice(Long userId, az.fitnest.notifications.dto.DeviceRegistrationRequest request) {
-        deviceRepository.findByPushToken(request.getPushToken())
-                .ifPresentOrElse(
-                        device -> {
-                            device.setUserId(userId);
-                            device.setPlatform(request.getPlatform());
-                            deviceRepository.save(device);
-                            log.info("Updated device token for user {}", userId);
-                        },
-                        () -> {
-                            az.fitnest.notifications.entity.Device device = new az.fitnest.notifications.entity.Device();
-                            device.setUserId(userId);
-                            device.setPushToken(request.getPushToken());
-                            device.setPlatform(request.getPlatform());
-                            device.setCreatedAt(java.time.LocalDateTime.now());
-                            deviceRepository.save(device);
-                            log.info("Registered new device token for user {}", userId);
-                        }
-                );
+    @Transactional
+    public void registerDevice(Long userId, DeviceRegistrationRequest request) {
+        try {
+            deviceRepository.findByPushToken(request.getPushToken())
+                    .ifPresentOrElse(
+                            device -> {
+                                device.setUserId(userId);
+                                device.setPlatform(request.getPlatform());
+                                deviceRepository.save(device);
+                                log.info("Updated device token for user {}", userId);
+                            },
+                            () -> {
+                                Device device = new Device();
+                                device.setUserId(userId);
+                                device.setPushToken(request.getPushToken());
+                                device.setPlatform(request.getPlatform());
+                                device.setCreatedAt(LocalDateTime.now());
+                                deviceRepository.save(device);
+                                log.info("Registered new device token for user {}", userId);
+                            }
+                    );
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Device token {} already registered concurrently, ignoring.", maskToken(request.getPushToken()));
+        }
     }
 
-    public int sendPushToUser(Long userId, String title, String body, java.util.Map<String, String> data) {
-        az.fitnest.notifications.entity.Notification notification = new az.fitnest.notifications.entity.Notification();
+    public PushResult sendPushToUser(Long userId, String title, String body, Map<String, String> data) {
+        // 1. Save Pending Notification in a transaction to guarantee it's recorded
+        Notification notification = savePendingNotification(userId, title, body);
+        Long notificationId = notification.getId();
+        
+        // 2. Fetch device tokens
+        List<String> tokens = deviceRepository.findPushTokensByUserId(userId);
+        if (tokens.isEmpty()) {
+            log.info("No devices registered for user {}, marking notification {} as failed.", userId, notificationId);
+            updateNotificationStatus(notificationId, NotificationStatus.FAILED, 0, 0, "No registered devices");
+            return PushResult.builder().notificationId(notificationId).build();
+        }
+
+        Map<String, String> payload = data != null ? data : Collections.emptyMap();
+        
+        // 3. Build Multicast Message with Platform Specific Configs
+        MulticastMessage message = MulticastMessage.builder()
+                .addAllTokens(tokens)
+                .setNotification(com.google.firebase.messaging.Notification.builder()
+                        .setTitle(title)
+                        .setBody(body)
+                        .build())
+                .putAllData(payload)
+                .setAndroidConfig(AndroidConfig.builder()
+                        .setPriority(AndroidConfig.Priority.HIGH)
+                        .setNotification(AndroidNotification.builder()
+                                .setDefaultSound(true)
+                                .setDefaultVibrateTimings(true)
+                                .build())
+                        .build())
+                .setApnsConfig(ApnsConfig.builder()
+                        .setAps(Aps.builder()
+                                .setSound("default")
+                                .setBadge(1)
+                                .setContentAvailable(true)
+                                .build())
+                        .build())
+                .build();
+
+        // 4. Send the message via Firebase
+        int sentCount = 0;
+        int failedCount = 0;
+        List<String> failedTokensToRemove = new ArrayList<>();
+        String failureReason = null;
+
+        try {
+            BatchResponse response = firebaseMessaging.sendEachForMulticast(message);
+            sentCount = response.getSuccessCount();
+            failedCount = response.getFailureCount();
+
+            if (failedCount > 0) {
+                List<SendResponse> responses = response.getResponses();
+                for (int i = 0; i < responses.size(); i++) {
+                    SendResponse sendResponse = responses.get(i);
+                    if (!sendResponse.isSuccessful()) {
+                        FirebaseMessagingException e = sendResponse.getException();
+                        String errorCode = e.getMessagingErrorCode().name();
+                        log.warn("Failed to send push to token {} for user {}: {}", maskToken(tokens.get(i)), userId, errorCode);
+                        
+                        if ("UNREGISTERED".equals(errorCode) || "INVALID_ARGUMENT".equals(errorCode)) {
+                            failedTokensToRemove.add(tokens.get(i));
+                        }
+                    }
+                }
+            }
+            log.info("Push multicasted to {} tokens for user {}. Success: {}, Failed: {}", tokens.size(), userId, sentCount, failedCount);
+        } catch (FirebaseMessagingException e) {
+            log.error("Fatal error sending push multicast to user {}: ", userId, e);
+            failedCount = tokens.size();
+            failureReason = e.getMessage();
+        } catch (Exception e) {
+            log.error("Unexpected error sending push to user {}: ", userId, e);
+            failedCount = tokens.size();
+            failureReason = e.getMessage();
+        }
+
+        // 5. Cleanup stale tokens and update the DB status
+        int removedTokens = failedTokensToRemove.size();
+        cleanupTokensAndUpdateStatus(notificationId, failedTokensToRemove, sentCount, failedCount, failureReason);
+
+        return PushResult.builder()
+                .notificationId(notificationId)
+                .sentCount(sentCount)
+                .failedCount(failedCount)
+                .removedTokens(removedTokens)
+                .build();
+    }
+
+    @Transactional
+    protected Notification savePendingNotification(Long userId, String title, String body) {
+        Notification notification = new Notification();
         notification.setUserId(userId);
         notification.setTitle(title);
         notification.setBody(body);
         notification.setRead(false);
-        notificationRepository.save(notification);
+        notification.setStatus(NotificationStatus.PENDING);
+        return notificationRepository.save(notification);
+    }
 
-        java.util.List<az.fitnest.notifications.entity.Device> devices = deviceRepository.findAllByUserId(userId);
-        int sentCount = 0;
-        for (az.fitnest.notifications.entity.Device device : devices) {
-            try {
-                sendPushNotification(device.getPushToken(), title, body, data);
-                sentCount++;
-            } catch (Exception e) {
-                log.error("Failed to send push to device {}: {}", device.getPushToken(), e.getMessage());
-            }
+    @Transactional
+    protected void updateNotificationStatus(Long notificationId, NotificationStatus status, int sentCount, int failedCount, String failureReason) {
+        notificationRepository.findById(notificationId).ifPresent(notification -> {
+            notification.setStatus(status);
+            notification.setSentCount(sentCount);
+            notification.setFailedCount(failedCount);
+            notification.setFailureReason(failureReason);
+        });
+    }
+
+    @Transactional
+    protected void cleanupTokensAndUpdateStatus(Long notificationId, List<String> staleTokens, int sentCount, int failedCount, String failureReason) {
+        for (String token : staleTokens) {
+            deviceRepository.deleteByPushToken(token);
         }
-        return sentCount;
+        
+        NotificationStatus finalStatus = NotificationStatus.FAILED;
+        if (sentCount > 0 && failedCount == 0) {
+            finalStatus = NotificationStatus.SENT;
+        } else if (sentCount > 0 && failedCount > 0) {
+            finalStatus = NotificationStatus.PARTIAL;
+        }
+
+        updateNotificationStatus(notificationId, finalStatus, sentCount, failedCount, failureReason);
     }
 
     public void sendPushNotification(String token, String title, String body) {
-        sendPushNotification(token, title, body, java.util.Collections.emptyMap());
+        sendPushNotification(token, title, body, Collections.emptyMap());
     }
 
-    public void sendPushNotification(String token, String title, String body, java.util.Map<String, String> data) {
+    public void sendPushNotification(String token, String title, String body, Map<String, String> data) {
         try {
-            com.google.firebase.messaging.Message.Builder messageBuilder = com.google.firebase.messaging.Message.builder()
+            Map<String, String> payload = data != null ? data : Collections.emptyMap();
+            com.google.firebase.messaging.Message message = com.google.firebase.messaging.Message.builder()
                     .setToken(token)
                     .setNotification(com.google.firebase.messaging.Notification.builder()
                             .setTitle(title)
                             .setBody(body)
-                            .build());
+                            .build())
+                    .putAllData(payload)
+                    .build();
 
-            if (data != null && !data.isEmpty()) {
-                messageBuilder.putAllData(data);
-            }
-
-            com.google.firebase.messaging.Message message = messageBuilder.build();
-
-            String response = com.google.firebase.messaging.FirebaseMessaging.getInstance().send(message);
-            log.info("Successfully sent push notification to token {}: {}", token, response);
-        } catch (Exception e) {
-            log.error("Error sending push notification to token {}: {}", token, e.getMessage());
-            if (e.getMessage() != null && (e.getMessage().contains("registration-token-not-registered") || e.getMessage().contains("invalid-registration-token"))) {
-                log.info("Removing stale token: {}", token);
+            String response = firebaseMessaging.send(message);
+            log.info("Successfully sent simple push notification to token {}: {}", maskToken(token), response);
+        } catch (FirebaseMessagingException e) {
+            log.error("Error sending push notification to token {}: ", maskToken(token), e);
+            String errorCode = e.getMessagingErrorCode().name();
+            if ("UNREGISTERED".equals(errorCode) || "INVALID_ARGUMENT".equals(errorCode)) {
+                log.info("Removing stale token: {}", maskToken(token));
                 deviceRepository.deleteByPushToken(token);
             }
         }
     }
 
-    public java.util.List<az.fitnest.notifications.dto.NotificationDto> getUserNotifications(Long userId) {
-        return notificationRepository.findAllByUserIdOrderByCreatedDateDesc(userId).stream()
-                .map(notification -> az.fitnest.notifications.dto.NotificationDto.builder()
+    public Page<NotificationDto> getUserNotifications(Long userId, Pageable pageable) {
+        return notificationRepository.findAllByUserIdOrderByCreatedDateDesc(userId, pageable)
+                .map(notification -> NotificationDto.builder()
                         .id(notification.getId())
                         .title(notification.getTitle())
                         .body(notification.getBody())
                         .isRead(notification.isRead())
                         .createdAt(notification.getCreatedDate())
-                        .build())
-                .collect(java.util.stream.Collectors.toList());
+                        .build());
+    }
+
+    private String maskToken(String token) {
+        if (token == null || token.length() <= 8) {
+            return "***";
+        }
+        return token.substring(0, 4) + "***" + token.substring(token.length() - 4);
     }
 }
