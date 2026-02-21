@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 public class NotificationService {
     private final LsimSmsService lsimSmsService;
     private final az.fitnest.notifications.repository.DeviceRepository deviceRepository;
+    private final az.fitnest.notifications.repository.NotificationRepository notificationRepository;
 
     public void sendWelcomeSms(String phoneNumber) {
         String message = "Welcome to our service!";
@@ -39,6 +40,13 @@ public class NotificationService {
     }
 
     public int sendPushToUser(Long userId, String title, String body, java.util.Map<String, String> data) {
+        az.fitnest.notifications.entity.Notification notification = new az.fitnest.notifications.entity.Notification();
+        notification.setUserId(userId);
+        notification.setTitle(title);
+        notification.setBody(body);
+        notification.setRead(false);
+        notificationRepository.save(notification);
+
         java.util.List<az.fitnest.notifications.entity.Device> devices = deviceRepository.findAllByUserId(userId);
         int sentCount = 0;
         for (az.fitnest.notifications.entity.Device device : devices) {
@@ -80,5 +88,17 @@ public class NotificationService {
                 deviceRepository.deleteByPushToken(token);
             }
         }
+    }
+
+    public java.util.List<az.fitnest.notifications.dto.NotificationDto> getUserNotifications(Long userId) {
+        return notificationRepository.findAllByUserIdOrderByCreatedDateDesc(userId).stream()
+                .map(notification -> az.fitnest.notifications.dto.NotificationDto.builder()
+                        .id(notification.getId())
+                        .title(notification.getTitle())
+                        .body(notification.getBody())
+                        .isRead(notification.isRead())
+                        .createdAt(notification.getCreatedDate())
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
     }
 }
