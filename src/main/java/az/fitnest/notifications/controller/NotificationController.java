@@ -1,6 +1,7 @@
 package az.fitnest.notifications.controller;
 
 import az.fitnest.notifications.dto.NotificationDto;
+import az.fitnest.notifications.dto.PaginatedResponse;
 import az.fitnest.notifications.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,9 +21,9 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping
-    public ResponseEntity<Page<NotificationDto>> getUserNotifications(
+    public ResponseEntity<PaginatedResponse<NotificationDto>> getUserNotifications(
             @AuthenticationPrincipal Long userId,
             @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(notificationService.getUserNotifications(userId, pageable));
+        return ResponseEntity.ok(PaginatedResponse.of(notificationService.getUserNotifications(userId, pageable)));
     }
 }
