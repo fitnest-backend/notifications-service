@@ -23,15 +23,23 @@ public class NotificationController {
 
     @GetMapping
     public ResponseEntity<PaginatedResponse<NotificationDto>> getUserNotifications(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal Object principal,
             @PageableDefault(size = 20) Pageable pageable) {
+        Long userId = extractUserId(principal);
         return ResponseEntity.ok(PaginatedResponse.of(notificationService.getUserNotifications(userId, pageable)));
     }
 
     @PostMapping("/broadcast")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> broadcast(@Valid @RequestBody BroadcastPushRequest request) {
-        notificationService.broadcastPushNotification(request.getTitle(), request.getBody(), request.getData());
+        notificationService.broadcastPushNotification(request.getTitle(), request.getBody());
         return ResponseEntity.ok().build();
+    }
+
+    private Long extractUserId(Object principal) {
+        if (principal instanceof Long) {
+            return (Long) principal;
+        }
+        return null;
     }
 }

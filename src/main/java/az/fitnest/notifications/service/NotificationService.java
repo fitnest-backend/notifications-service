@@ -43,28 +43,28 @@ public class NotificationService {
     }
 
     @Transactional
-    public void registerDevice(Long userId, DeviceRegistrationRequest request) {
+    public void registerDevice(Long userId, String pushToken, Device.Platform platform) {
         try {
-            deviceRepository.findByPushToken(request.getPushToken())
+            deviceRepository.findByPushToken(pushToken)
                     .ifPresentOrElse(
                             device -> {
                                 device.setUserId(userId);
-                                device.setPlatform(request.getPlatform());
+                                device.setPlatform(platform);
                                 deviceRepository.save(device);
                                 log.info("Updated device token for user {}", userId);
                             },
                             () -> {
                                 Device device = new Device();
                                 device.setUserId(userId);
-                                device.setPushToken(request.getPushToken());
-                                device.setPlatform(request.getPlatform());
+                                device.setPushToken(pushToken);
+                                device.setPlatform(platform);
                                 device.setCreatedAt(LocalDateTime.now());
                                 deviceRepository.save(device);
                                 log.info("Registered new device token for user {}", userId);
                             }
                     );
         } catch (DataIntegrityViolationException e) {
-            log.warn("Device token {} already registered concurrently, ignoring.", maskToken(request.getPushToken()));
+            log.warn("Device token {} already registered concurrently, ignoring.", maskToken(pushToken));
         }
     }
 
@@ -157,15 +157,27 @@ public class NotificationService {
     }
 
     @Transactional
-    public void broadcastPushNotification(String title, String body, Map<String, String> data) {
+    public void broadcastPushNotification(String title, String body) {
         List<String> tokens = deviceRepository.findAllPushTokens();
         if (tokens.isEmpty()) {
             log.info("No devices registered for broadcast");
             return;
         }
 
-        Map<String, String> payload = data != null ? data : Collections.emptyMap();
+        Map<String, String> payload = Collections.emptyMap();
 
+        // 1. Save notifications for each user who has a device registered
+        // This is necessary so they see the broadcast in their notification list/history
+        List<Long> userIds = deviceRepository.findAll().stream()
+                .map(Device::getUserId)
+                .distinct()
+                .toList();
+
+        for (Long userIdForNotification : userIds) {
+            savePendingNotification(userIdForNotification, title, body);
+        }
+
+        // 2. Build Multicast Message
         MulticastMessage message = MulticastMessage.builder()
                 .addAllTokens(tokens)
                 .setNotification(com.google.firebase.messaging.Notification.builder()
@@ -265,8 +277,49 @@ public class NotificationService {
         }
     }
 
+    @Transactional
+    public void sendToDevice(Long deviceId, String title, String body) {
+        deviceRepository.findById(deviceId).ifPresentOrElse(device -> {
+            // 1. Save Notification record for in-app history
+            savePendingNotification(device.getUserId(), title, body);
+            
+            // 2. Send push via FCM
+            sendPushNotification(device.getPushToken(), title, body);
+            
+            log.info("Direct notification sent to device {} for user {}", deviceId, device.getUserId());
+        }, () -> {
+            log.warn("Device with ID {} not found for direct push", deviceId);
+            throw new az.fitnest.notifications.exception.ResourceNotFoundException("Cihaz tapılmadı");
+        });
+    }
+
     public Page<NotificationDto> getUserNotifications(Long userId, Pageable pageable) {
-        return notificationRepository.findAllByUserIdOrderByCreatedDateDesc(userId, pageable)
+        if (userId == null) {
+            return Page.empty(pageable);
+        }
+
+        // Handle DTO field mapping for sorting (createdAt -> createdDate)
+        Pageable finalPageable = pageable;
+        if (pageable.getSort().isSorted()) {
+            finalPageable = org.springframework.data.domain.PageRequest.of(
+                    pageable.getPageNumber(),
+                    pageable.getPageSize(),
+                    org.springframework.data.domain.Sort.by(
+                            pageable.getSort().stream()
+                                    .map(order -> {
+                                        if ("createdAt".equals(order.getProperty())) {
+                                            return order.isAscending() ? 
+                                                    org.springframework.data.domain.Sort.Order.asc("createdDate") : 
+                                                    org.springframework.data.domain.Sort.Order.desc("createdDate");
+                                        }
+                                        return order;
+                                    })
+                                    .toList()
+                    )
+            );
+        }
+
+        return notificationRepository.findAllByUserIdOrderByCreatedDateDesc(userId, finalPageable)
                 .map(notification -> NotificationDto.builder()
                         .id(notification.getId())
                         .title(notification.getTitle())
