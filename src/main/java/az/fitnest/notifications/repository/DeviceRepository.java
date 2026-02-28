@@ -21,4 +21,5 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
 
     Optional<Device> findByPushToken(String pushToken);
     void deleteByPushToken(String pushToken);
+    long countByUserId(Long userId);
 }

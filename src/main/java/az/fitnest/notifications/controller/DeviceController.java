@@ -63,9 +63,9 @@ public class DeviceController {
 
     @PostMapping("/send")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> sendPushToDevice(@Valid @RequestBody DirectPushRequest request) {
-        log.info("Admin request to send notification to device {}", request.getDeviceId());
-        notificationService.sendToDevice(request.getDeviceId(), request.getTitle(), request.getBody());
+    public ResponseEntity<Void> sendPushToUser(@Valid @RequestBody DirectPushRequest request) {
+        log.info("Admin request to send notification to user {}", request.getUserId());
+        notificationService.sendToUser(request.getUserId(), request.getTitle(), request.getBody());
         return ResponseEntity.ok().build();
     }
 }
