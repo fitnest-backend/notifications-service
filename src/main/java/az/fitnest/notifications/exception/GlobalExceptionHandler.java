@@ -41,12 +41,12 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(status)
-                .body(ApiResponse.error(buildError("VALIDATION_ERROR", "Validation failed", status, request.getRequestURI(), details)));
+                .body(ApiResponse.error(buildError("VALIDATION_ERROR", "Doğrulama xətası", status, request.getRequestURI(), details)));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex, HttpServletRequest request) {
-        String message = "Invalid request format";
+        String message = "Yanlış sorğu formatı";
         String detailText = "Invalid request body";
 
         Throwable cause = ex.getCause();
@@ -76,7 +76,7 @@ public class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         return ResponseEntity
                 .status(status)
-                .body(ApiResponse.error(buildError("INTERNAL_SERVER_ERROR", "An unexpected error occurred.", status, request.getRequestURI(), null)));
+                .body(ApiResponse.error(buildError("INTERNAL_SERVER_ERROR", "Daxili server xətası", status, request.getRequestURI(), null)));
     }
 
     private ApiError buildError(String code, String message, HttpStatus status, String path, Object details) {

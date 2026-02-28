@@ -56,11 +56,11 @@ public class LsimSmsService {
 
         // 4. Handle response
         if (response == null) {
-            throw new SmsSendException("Empty response from LSIM");
+            throw new SmsSendException("LSIM-dən boş cavab gəldi");
         }
         if (response.getErrorCode() != null && response.getErrorCode() != 0) {
             log.error("LSIM error: {} - {}", response.getErrorCode(), response.getErrorMessage());
-            throw new SmsSendException("LSIM error: " + response.getErrorMessage());
+            throw new SmsSendException("LSIM xətası: " + response.getErrorMessage());
         }
 
         // 5. Return transaction ID
@@ -87,7 +87,7 @@ public class LsimSmsService {
                 String.format("LSIM error %d: %s", response.getErrorCode(), response.getErrorMessage()) : 
                 "no response";
             log.error("Balance check failed: {}", errorMsg);
-            throw new SmsBalanceException("Balance check failed: " + errorMsg);
+            throw new SmsBalanceException("Balansın yoxlanılması uğursuz oldu: " + errorMsg);
         }
         return response.getObj() != null ? response.getObj().intValue() : 0;
     }
@@ -141,22 +141,22 @@ public class LsimSmsService {
 
     private SmsStatus handleReportResponse(LsimApiResponse response) {
         if (response == null) {
-            throw new SmsReportException("Empty response from LSIM");
+            throw new SmsReportException("LSIM-dən boş cavab gəldi");
         }
 
         if (response.getErrorCode() != null && response.getErrorCode() != 0) {
-            throw new SmsReportException("Report failed: " + response.getErrorMessage(),
+            throw new SmsReportException("Hesabat uğursuz oldu: " + response.getErrorMessage(),
                     response.getErrorCode());
         }
 
         if (response.getObj() == null) {
-            throw new SmsReportException("No status code in LSIM response");
+            throw new SmsReportException("LSIM cavabında status kodu yoxdur");
         }
 
         Integer statusCode = response.getObj().intValue();  // 100-109
         SmsStatus status = SmsStatus.fromCode(statusCode);
         if (status == null) {
-            throw new SmsReportException("Unknown status code: " + statusCode);
+            throw new SmsReportException("Naməlum status kodu: " + statusCode);
         }
         return status;
     }

@@ -12,11 +12,9 @@ import com.google.firebase.messaging.AndroidConfig;
 import com.google.firebase.messaging.AndroidNotification;
 import com.google.firebase.messaging.ApnsConfig;
 import com.google.firebase.messaging.Aps;
-import com.google.firebase.messaging.BatchResponse;
-import com.google.firebase.messaging.FirebaseMessaging;
-import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.MulticastMessage;
 import com.google.firebase.messaging.SendResponse;
+import com.google.firebase.messaging.BatchResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -41,7 +39,7 @@ public class NotificationService {
     private final FirebaseMessaging firebaseMessaging;
 
     public void sendWelcomeSms(String phoneNumber) {
-        String message = "Welcome to our service!";
+        String message = "Xidmətimizə xoş gəlmisiniz!";
         Long transactionId = lsimSmsService.sendSms(phoneNumber, message);
         log.info("SMS sent, transaction ID: {}", transactionId);
     }
@@ -158,6 +156,50 @@ public class NotificationService {
                 .failedCount(failedCount)
                 .removedTokens(removedTokens)
                 .build();
+    }
+
+    @Transactional
+    public void broadcastPushNotification(String title, String body, Map<String, String> data) {
+        List<String> tokens = deviceRepository.findAllPushTokens();
+        if (tokens.isEmpty()) {
+            log.info("No devices registered for broadcast");
+            return;
+        }
+
+        Map<String, String> payload = data != null ? data : Collections.emptyMap();
+
+        MulticastMessage message = MulticastMessage.builder()
+                .addAllTokens(tokens)
+                .setNotification(com.google.firebase.messaging.Notification.builder()
+                        .setTitle(title)
+                        .setBody(body)
+                        .build())
+                .putAllData(payload)
+                .setAndroidConfig(AndroidConfig.builder()
+                        .setPriority(AndroidConfig.Priority.HIGH)
+                        .setNotification(AndroidNotification.builder()
+                                .setDefaultSound(true)
+                                .setDefaultVibrateTimings(true)
+                                .build())
+                        .build())
+                .setApnsConfig(ApnsConfig.builder()
+                        .setAps(Aps.builder()
+                                .setSound("default")
+                                .setBadge(1)
+                                .setContentAvailable(true)
+                                .build())
+                        .build())
+                .build();
+
+        try {
+            BatchResponse response = firebaseMessaging.sendEachForMulticast(message);
+            log.info("Broadcast push sent to {} devices. Success: {}, Failed: {}", 
+                    tokens.size(), response.getSuccessCount(), response.getFailureCount());
+        } catch (FirebaseMessagingException e) {
+            log.error("Fatal error during broadcast push: ", e);
+        } catch (Exception e) {
+            log.error("Unexpected error during broadcast push: ", e);
+        }
     }
 
     @Transactional

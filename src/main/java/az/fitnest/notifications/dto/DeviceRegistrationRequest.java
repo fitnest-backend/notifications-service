@@ -8,9 +8,9 @@ import lombok.Data;
 @Data
 public class DeviceRegistrationRequest {
     
-    @NotBlank(message = "Push token is required")
+    @NotBlank(message = "Push tokeni mütləqdir")
     private String pushToken;
     
-    @NotNull(message = "Platform is required")
+    @NotNull(message = "Platforma mütləqdir")
     private Device.Platform platform;
 }

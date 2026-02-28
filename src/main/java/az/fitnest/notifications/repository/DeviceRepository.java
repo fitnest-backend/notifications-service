@@ -16,6 +16,9 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
     @Query("SELECT d.pushToken FROM Device d WHERE d.userId = :userId")
     List<String> findPushTokensByUserId(@Param("userId") Long userId);
 
+    @Query("SELECT d.pushToken FROM Device d")
+    List<String> findAllPushTokens();
+
     Optional<Device> findByPushToken(String pushToken);
     void deleteByPushToken(String pushToken);
 }
