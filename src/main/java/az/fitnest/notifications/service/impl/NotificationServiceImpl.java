@@ -5,6 +5,7 @@ import az.fitnest.notifications.grpc.IdentityGrpcClient;
 import az.fitnest.notifications.dto.DeviceRegistrationRequest;
 import az.fitnest.notifications.dto.NotificationDto;
 import az.fitnest.notifications.dto.PushResult;
+import az.fitnest.notifications.mapper.NotificationMapper;
 import az.fitnest.notifications.model.entity.Device;
 import az.fitnest.notifications.model.entity.Notification;
 import az.fitnest.notifications.model.enums.NotificationStatus;
@@ -331,13 +332,7 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         return notificationRepository.findAllByUserIdOrderByCreatedDateDesc(userId, finalPageable)
-                .map(notification -> NotificationDto.builder()
-                        .id(notification.getId())
-                        .title(notification.getTitle())
-                        .body(notification.getBody())
-                        .isRead(notification.isRead())
-                        .createdAt(notification.getCreatedDate())
-                        .build());
+                .map(NotificationMapper::toDto);
     }
 
     private String maskToken(String token) {
