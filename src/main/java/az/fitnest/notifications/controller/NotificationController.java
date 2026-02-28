@@ -4,6 +4,9 @@ import az.fitnest.notifications.dto.BroadcastPushRequest;
 import az.fitnest.notifications.dto.NotificationDto;
 import az.fitnest.notifications.dto.PaginatedResponse;
 import az.fitnest.notifications.service.NotificationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,10 +20,13 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/notifications")
 @RequiredArgsConstructor
+@Tag(name = "Notifications", description = "İstifadəçi bildirişlərini və yayım mesajlarını idarə etmək üçün ucluqlar")
+@SecurityRequirement(name = "bearerAuth")
 public class NotificationController {
 
     private final NotificationService notificationService;
 
+    @Operation(summary = "İstifadəçi bildirişlərini əldə edin", description = "Autentifikasiya olunmuş istifadəçi üçün bildirişlərin səhifələnmiş siyahısını qaytarır.")
     @GetMapping
     public ResponseEntity<PaginatedResponse<NotificationDto>> getUserNotifications(
             @AuthenticationPrincipal Object principal,
@@ -29,13 +35,14 @@ public class NotificationController {
         return ResponseEntity.ok(PaginatedResponse.of(notificationService.getUserNotifications(userId, pageable)));
     }
 
+    @Operation(summary = "Yayım bildirişi göndərin (Admin)", description = "Bütün istifadəçilərə push bildirişi göndərir. Admin rolu tələb olunur.")
     @PostMapping("/broadcast")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> broadcast(@Valid @RequestBody BroadcastPushRequest request) {
         notificationService.broadcastPushNotification(request.getTitle(), request.getBody());
         return ResponseEntity.ok().build();
     }
-
+}
     private Long extractUserId(Object principal) {
         if (principal instanceof Long) {
             return (Long) principal;

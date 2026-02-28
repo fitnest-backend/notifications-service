@@ -7,6 +7,10 @@ import az.fitnest.notifications.repository.DeviceRepository;
 import az.fitnest.notifications.service.NotificationService;
 import az.fitnest.notifications.util.DeviceDetector;
 import az.fitnest.notifications.model.entity.Device;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,11 +26,14 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/devices")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Devices", description = "İstifadəçi cihazlarını və push tokenlərini idarə etmək üçün ucluqlar")
+@SecurityRequirement(name = "bearerAuth")
 public class DeviceController {
 
     private final NotificationService notificationService;
     private final DeviceRepository deviceRepository;
 
+    @Operation(summary = "Cihazı qeydiyyatdan keçirin", description = "İstifadəçinin cihazını push bildirişləri üçün qeydiyyatdan keçirir.")
     @PostMapping("/register")
     public ResponseEntity<Void> registerDevice(
             @AuthenticationPrincipal Long userId,
@@ -45,6 +52,7 @@ public class DeviceController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Bütün cihazları əldə edin (Admin)", description = "Sistemdə qeydiyyatdan keçmiş bütün cihazların siyahısını qaytarır. Admin rolu tələb olunur.")
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<DeviceDto>> getAllDevices() {
@@ -61,6 +69,7 @@ public class DeviceController {
         return ResponseEntity.ok(devices);
     }
 
+    @Operation(summary = "İstifadəçiyə push bildirişi göndərin (Admin)", description = "Xüsusi istifadəçiyə push bildirişi göndərir. Admin rolu tələb olunur.")
     @PostMapping("/send")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> sendPushToUser(@Valid @RequestBody DirectPushRequest request) {

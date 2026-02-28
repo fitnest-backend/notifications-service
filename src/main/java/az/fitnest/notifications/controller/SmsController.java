@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/sms")
-@Tag(name = "SMS Service", description = "Send SMS, check balance, get delivery reports")
+@Tag(name = "SMS Service", description = "SMS göndərilməsi, balansın yoxlanılması, çatdırılma hesabatlarının alınması")
 @RequiredArgsConstructor
 public class SmsController {
 
@@ -23,23 +23,23 @@ public class SmsController {
 
     @PostMapping("/send")
     @Operation(
-            summary = "Send an SMS message",
-            description = "Sends an SMS message to the specified recipient. The message can be scheduled for future delivery or sent immediately. Supports Unicode for international characters and emojis. Returns a transaction ID for tracking delivery status."
+            summary = "SMS mesajı göndərin",
+            description = "Göstərilən alıcıya SMS mesajı göndərir. Mesaj gələcək çatdırılma üçün planlaşdırıla bilər və ya dərhal göndərilə bilər. Beynəlxalq simvollar və emojilər üçün Unicode-u dəstəkləyir. Çatdırılma statusunu izləmək üçün tranzaksiya ID-sini qaytarır."
     )
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "SMS sent successfully",
+                    description = "SMS uğurla göndərildi",
                     content = @Content(schema = @Schema(implementation = SendSmsResponse.class))
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "Invalid request data or validation failed",
+                    description = "Yanlış sorğu məlumatı və ya validasiya xətası",
                     content = @Content
             ),
             @ApiResponse(
                     responseCode = "500",
-                    description = "Internal server error or SMS provider failure",
+                    description = "Daxili server xətası və ya SMS provayderinin xətası",
                     content = @Content
             )
     })
@@ -56,18 +56,18 @@ public class SmsController {
 
     @GetMapping("/balance")
     @Operation(
-            summary = "Check remaining SMS balance",
-            description = "Retrieves the current number of remaining SMS credits available for sending messages. This balance is managed by the LSIM SMS provider and is deducted based on message length and type."
+            summary = "Qalan SMS balansını yoxlayın",
+            description = "Mesaj göndərmək üçün mövcud olan qalan SMS kreditlərinin sayını əldə edir. Bu balans LSIM SMS provayderi tərəfindən idarə olunur və mesajın uzunluğuna və növünə əsasən çıxılır."
     )
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "Balance retrieved successfully",
+                    description = "Balans uğurla əldə edildi",
                     content = @Content(schema = @Schema(implementation = BalanceResponse.class))
             ),
             @ApiResponse(
                     responseCode = "500",
-                    description = "Internal server error or provider communication failure",
+                    description = "Daxili server xətası və ya provayderlə əlaqə xətası",
                     content = @Content
             )
     })
@@ -78,23 +78,23 @@ public class SmsController {
 
     @GetMapping("/report/{transactionId}")
     @Operation(
-            summary = "Get delivery status of a sent SMS",
-            description = "Retrieves the delivery status of a previously sent SMS using its transaction ID. Status codes indicate whether the message was delivered, failed, or is still in progress."
+            summary = "Göndərilmiş SMS-in çatdırılma statusunu əldə edin",
+            description = "Tranzaksiya ID-si vasitəsilə əvvəllər göndərilmiş SMS-in çatdırılma statusunu əldə edir. Status kodları mesajın çatdırıldığını, uğursuz olduğunu və ya hələ də prosesdə olduğunu göstərir."
     )
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "Delivery status retrieved successfully",
+                    description = "Çatdırılma statusu uğurla əldə edildi",
                     content = @Content(schema = @Schema(implementation = ReportResponse.class))
             ),
             @ApiResponse(
                     responseCode = "404",
-                    description = "Transaction ID not found",
+                    description = "Tranzaksiya ID-si tapılmadı",
                     content = @Content
             ),
             @ApiResponse(
                     responseCode = "500",
-                    description = "Internal server error or provider communication failure",
+                    description = "Daxili server xətası və ya provayderlə əlaqə xətası",
                     content = @Content
             )
     })
