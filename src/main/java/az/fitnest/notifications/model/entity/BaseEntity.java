@@ -1,4 +1,4 @@
-package az.fitnest.notifications.entity;
+package az.fitnest.notifications.model.entity;
 
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;

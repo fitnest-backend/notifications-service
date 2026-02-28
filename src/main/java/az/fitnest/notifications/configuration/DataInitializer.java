@@ -1,7 +1,8 @@
 package az.fitnest.notifications.configuration;
+import az.fitnest.notifications.model.enums.NotificationStatus;
 
-import az.fitnest.notifications.entity.Notification;
-import az.fitnest.notifications.entity.NotificationStatus;
+import az.fitnest.notifications.model.entity.Notification;
+import az.fitnest.notifications.model.enums.NotificationStatus;
 import az.fitnest.notifications.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;

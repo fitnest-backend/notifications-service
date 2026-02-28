@@ -1,4 +1,4 @@
-package az.fitnest.notifications.entity;
+package az.fitnest.notifications.model.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;

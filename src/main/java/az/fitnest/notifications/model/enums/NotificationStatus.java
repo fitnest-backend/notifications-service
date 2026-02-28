@@ -1,4 +1,4 @@
-package az.fitnest.notifications.entity;
+package az.fitnest.notifications.model.enums;
 
 public enum NotificationStatus {
     PENDING,

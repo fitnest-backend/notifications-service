@@ -1,12 +1,13 @@
 package az.fitnest.notifications.service.impl;
+import az.fitnest.notifications.model.enums.NotificationStatus;
 
 import az.fitnest.notifications.grpc.IdentityGrpcClient;
 import az.fitnest.notifications.dto.DeviceRegistrationRequest;
 import az.fitnest.notifications.dto.NotificationDto;
 import az.fitnest.notifications.dto.PushResult;
-import az.fitnest.notifications.entity.Device;
-import az.fitnest.notifications.entity.Notification;
-import az.fitnest.notifications.entity.NotificationStatus;
+import az.fitnest.notifications.model.entity.Device;
+import az.fitnest.notifications.model.entity.Notification;
+import az.fitnest.notifications.model.enums.NotificationStatus;
 import az.fitnest.notifications.repository.DeviceRepository;
 import az.fitnest.notifications.repository.NotificationRepository;
 import az.fitnest.notifications.service.LsimSmsService;

@@ -2,7 +2,7 @@ package az.fitnest.notifications.service;
 
 import az.fitnest.notifications.dto.NotificationDto;
 import az.fitnest.notifications.dto.PushResult;
-import az.fitnest.notifications.entity.Device;
+import az.fitnest.notifications.model.entity.Device;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.Map;

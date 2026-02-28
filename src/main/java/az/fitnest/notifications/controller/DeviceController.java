@@ -6,7 +6,7 @@ import az.fitnest.notifications.dto.DirectPushRequest;
 import az.fitnest.notifications.repository.DeviceRepository;
 import az.fitnest.notifications.service.NotificationService;
 import az.fitnest.notifications.util.DeviceDetector;
-import az.fitnest.notifications.entity.Device;
+import az.fitnest.notifications.model.entity.Device;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

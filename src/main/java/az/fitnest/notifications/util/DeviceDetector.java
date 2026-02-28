@@ -1,6 +1,6 @@
 package az.fitnest.notifications.util;
 
-import az.fitnest.notifications.entity.Device;
+import az.fitnest.notifications.model.entity.Device;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;

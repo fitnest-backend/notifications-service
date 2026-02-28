@@ -1,6 +1,6 @@
 package az.fitnest.notifications.repository;
 
-import az.fitnest.notifications.entity.Device;
+import az.fitnest.notifications.model.entity.Device;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

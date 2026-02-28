@@ -1,6 +1,6 @@
 package az.fitnest.notifications.dto;
 
-import az.fitnest.notifications.entity.Device;
+import az.fitnest.notifications.model.entity.Device;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
