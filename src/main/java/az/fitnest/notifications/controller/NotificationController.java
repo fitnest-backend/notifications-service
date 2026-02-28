@@ -42,7 +42,7 @@ public class NotificationController {
         notificationService.broadcastPushNotification(request.getTitle(), request.getBody());
         return ResponseEntity.ok().build();
     }
-}
+
     private Long extractUserId(Object principal) {
         if (principal instanceof Long) {
             return (Long) principal;
