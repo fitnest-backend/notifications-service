@@ -25,6 +25,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import az.fitnest.notifications.exception.ResourceNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -295,14 +296,17 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Transactional
-    public void sendToUser(Long userId, String title, String body) {
-        // 1. Save Notification record for in-app history
-        savePendingNotification(userId, title, body);
+    public void sendToDevice(Long deviceId, String title, String body) {
+        Device device = deviceRepository.findById(deviceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cihaz tapılmadı"));
+
+        // 1. Save Notification record for in-app history (linked to user)
+        savePendingNotification(device.getUserId(), title, body);
         
-        // 2. Send push to all registered devices of this user
-        sendPushToUser(userId, title, body, Collections.emptyMap());
+        // 2. Send push to the specific registered device
+        sendPushNotification(device.getPushToken(), title, body, Collections.emptyMap());
         
-        log.info("Direct notification sent to user {}", userId);
+        log.info("Direct notification sent to device {}", deviceId);
     }
 
     public Page<NotificationDto> getUserNotifications(Long userId, Pageable pageable) {

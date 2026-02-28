@@ -13,8 +13,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class DirectPushRequest {
     
-    @NotNull(message = "İstifadəçi ID mütləqdir")
-    private Long userId;
+    @NotNull(message = "Cihaz ID mütləqdir")
+    private Long deviceId;
     
     @NotBlank(message = "Başlıq mütləqdir")
     private String title;

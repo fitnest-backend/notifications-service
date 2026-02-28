@@ -69,12 +69,29 @@ public class DeviceController {
         return ResponseEntity.ok(devices);
     }
 
-    @Operation(summary = "İstifadəçiyə push bildirişi göndərin (Admin)", description = "Xüsusi istifadəçiyə push bildirişi göndərir. Admin rolu tələb olunur.")
+    @Operation(summary = "İstifadəçinin cihazlarını əldə edin", description = "Verilmiş istifadəçi ID-sinə aid olan bütün cihazları qaytarır. Admin rolu tələb olunur.")
+    @GetMapping("/user/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<DeviceDto>> getDevicesByUserId(@PathVariable Long userId) {
+        log.info("Admin request to get devices for user {}", userId);
+        List<DeviceDto> devices = deviceRepository.findAllByUserId(userId).stream()
+                .map(device -> DeviceDto.builder()
+                        .deviceId(device.getDeviceId())
+                        .userId(device.getUserId())
+                        .pushToken(device.getPushToken())
+                        .platform(device.getPlatform())
+                        .createdAt(device.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(devices);
+    }
+
+    @Operation(summary = "Cihaza push bildirişi göndərin (Admin)", description = "Xüsusi cihaza push bildirişi göndərir. Admin rolu tələb olunur.")
     @PostMapping("/send")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> sendPushToUser(@Valid @RequestBody DirectPushRequest request) {
-        log.info("Admin request to send notification to user {}", request.getUserId());
-        notificationService.sendToUser(request.getUserId(), request.getTitle(), request.getBody());
+    public ResponseEntity<Void> sendPushToDevice(@Valid @RequestBody DirectPushRequest request) {
+        log.info("Admin request to send notification to device {}", request.getDeviceId());
+        notificationService.sendToDevice(request.getDeviceId(), request.getTitle(), request.getBody());
         return ResponseEntity.ok().build();
     }
 }
