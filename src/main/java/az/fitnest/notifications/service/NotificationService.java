@@ -16,4 +16,8 @@ public interface NotificationService {
     void sendPushNotification(String token, String title, String body, Map<String, String> data);
     void sendToDevice(Long deviceId, String title, String body);
     Page<NotificationDto> getUserNotifications(Long userId, Pageable pageable);
+    void markNotificationAsRead(Long id, Long userId);
+    void markAllNotificationsAsRead(Long userId);
+    void deleteNotification(Long id, Long userId);
+    void deleteAllNotifications(Long userId);
 }

@@ -339,6 +339,29 @@ public class NotificationServiceImpl implements NotificationService {
                 .map(NotificationMapper::toDto);
     }
 
+    @Transactional
+    public void markNotificationAsRead(Long id, Long userId) {
+        Notification notification = notificationRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Bildiriş tapılmadı"));
+        notification.setRead(true);
+        notificationRepository.save(notification);
+    }
+
+    @Transactional
+    public void markAllNotificationsAsRead(Long userId) {
+        notificationRepository.markAllAsReadByUserId(userId);
+    }
+
+    @Transactional
+    public void deleteNotification(Long id, Long userId) {
+        notificationRepository.deleteByIdAndUserId(id, userId);
+    }
+
+    @Transactional
+    public void deleteAllNotifications(Long userId) {
+        notificationRepository.deleteAllByUserId(userId);
+    }
+
     private String maskToken(String token) {
         if (token == null || token.length() <= 8) {
             return "***";

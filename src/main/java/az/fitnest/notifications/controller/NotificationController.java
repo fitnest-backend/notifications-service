@@ -35,11 +35,47 @@ public class NotificationController {
         return ResponseEntity.ok(PaginatedResponse.of(notificationService.getUserNotifications(userId, pageable)));
     }
 
-    @Operation(summary = "Yayım bildirişi göndərin (Admin)", description = "Bütün istifadəçilərə push bildirişi göndərir. Admin rolu tələb olunur.")
-    @PostMapping("/broadcast")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> broadcast(@Valid @RequestBody BroadcastPushRequest request) {
-        notificationService.broadcastPushNotification(request.getTitle(), request.getBody());
+    @Operation(summary = "Bildirişi oxunmuş kimi qeyd edin", description = "Verilmiş bildirişi oxunmuş kimi qeyd edir.")
+    @PatchMapping("/{id}/read")
+    public ResponseEntity<Void> markAsRead(
+            @AuthenticationPrincipal Object principal,
+            @PathVariable Long id) {
+        Long userId = extractUserId(principal);
+        if (userId != null) {
+            notificationService.markNotificationAsRead(id, userId);
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Bütün bildirişləri oxunmuş kimi qeyd edin", description = "İstifadəçinin bütün bildirişlərini oxunmuş kimi qeyd edir.")
+    @PatchMapping("/read-all")
+    public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal Object principal) {
+        Long userId = extractUserId(principal);
+        if (userId != null) {
+            notificationService.markAllNotificationsAsRead(userId);
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Bildirişi silin", description = "Verilmiş bildirişi silir.")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteNotification(
+            @AuthenticationPrincipal Object principal,
+            @PathVariable Long id) {
+        Long userId = extractUserId(principal);
+        if (userId != null) {
+            notificationService.deleteNotification(id, userId);
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Bütün bildirişləri silin", description = "İstifadəçinin bütün bildirişlərini silir.")
+    @DeleteMapping("/all")
+    public ResponseEntity<Void> deleteAllNotifications(@AuthenticationPrincipal Object principal) {
+        Long userId = extractUserId(principal);
+        if (userId != null) {
+            notificationService.deleteAllNotifications(userId);
+        }
         return ResponseEntity.ok().build();
     }
 
