@@ -11,9 +11,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,9 +29,10 @@ public class NotificationController {
     @GetMapping
     public ResponseEntity<PaginatedResponse<NotificationDto>> getUserNotifications(
             @AuthenticationPrincipal Object principal,
-            @PageableDefault(size = 20) Pageable pageable) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         Long userId = extractUserId(principal);
-        return ResponseEntity.ok(PaginatedResponse.of(notificationService.getUserNotifications(userId, pageable)));
+        return ResponseEntity.ok(PaginatedResponse.of(notificationService.getUserNotifications(userId, PageRequest.of(page, size))));
     }
 
     @Operation(summary = "Bildirişi oxunmuş kimi qeyd edin", description = "Verilmiş bildirişi oxunmuş kimi qeyd edir.")

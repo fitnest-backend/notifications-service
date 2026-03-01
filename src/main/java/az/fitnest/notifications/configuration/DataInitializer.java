@@ -43,6 +43,25 @@ public class DataInitializer {
             updateNotification.setSentCount(1);
 
             notificationRepository.save(updateNotification);
+
+            // Add notifications for admin user with ID 1
+            Notification adminNotification = new Notification();
+            adminNotification.setUserId(1L);
+            adminNotification.setTitle("Welcome Admin!");
+            adminNotification.setBody("Welcome to the Fitnest Administration Panel.");
+            adminNotification.setRead(false);
+            adminNotification.setStatus(NotificationStatus.SENT);
+            adminNotification.setSentCount(1);
+            notificationRepository.save(adminNotification);
+
+            Notification adminSystemAlert = new Notification();
+            adminSystemAlert.setUserId(1L);
+            adminSystemAlert.setTitle("System Alert");
+            adminSystemAlert.setBody("All systems are operational.");
+            adminSystemAlert.setRead(false);
+            adminSystemAlert.setStatus(NotificationStatus.SENT);
+            adminSystemAlert.setSentCount(1);
+            notificationRepository.save(adminSystemAlert);
         }
     }
 }
