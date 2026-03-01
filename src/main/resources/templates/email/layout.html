@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content)">
+<html th:fragment="layout(title, content)" xmlns:th="http://www.thymeleaf.org">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title th:text="${title}">Fitnest</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -107,33 +107,33 @@
 </head>
 
 <body>
-    <div class="wrapper">
-        <table class="main">
-            <!-- Header -->
-            <tr>
-                <td class="header">
-                    <h1>Fitnest</h1>
-                </td>
-            </tr>
+<div class="wrapper">
+    <table class="main">
+        <!-- Header -->
+        <tr>
+            <td class="header">
+                <h1>Fitnest</h1>
+            </td>
+        </tr>
 
-            <!-- Content Area -->
-            <tr>
-                <td class="content">
-                    <div th:replace="${content}">
-                        <!-- Template content will be inserted here -->
-                    </div>
-                </td>
-            </tr>
+        <!-- Content Area -->
+        <tr>
+            <td class="content">
+                <div th:replace="${content}">
+                    <!-- Template content will be inserted here -->
+                </div>
+            </td>
+        </tr>
 
-            <!-- Footer -->
-            <tr>
-                <td class="footer">
-                    <p style="margin: 0;">&copy; 2026 Fitnest. All rights reserved.</p>
-                    <p style="margin: 8px 0 0;">Experience the transformation.</p>
-                </td>
-            </tr>
-        </table>
-    </div>
+        <!-- Footer -->
+        <tr>
+            <td class="footer">
+                <p style="margin: 0;">&copy; 2026 Fitnest. All rights reserved.</p>
+                <p style="margin: 8px 0 0;">Experience the transformation.</p>
+            </td>
+        </tr>
+    </table>
+</div>
 </body>
 
 </html>

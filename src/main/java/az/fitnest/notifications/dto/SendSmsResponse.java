@@ -11,8 +11,8 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Response after successfully sending an SMS")
 public class SendSmsResponse {
 
-    @Schema(description = "Transaction ID assigned by LSIM", 
-            example = "123456789", 
+    @Schema(description = "Transaction ID assigned by LSIM",
+            example = "123456789",
             requiredMode = Schema.RequiredMode.REQUIRED)
     private Long transactionId;
 }

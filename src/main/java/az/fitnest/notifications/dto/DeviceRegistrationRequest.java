@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 public class DeviceRegistrationRequest {
-    
+
     @NotBlank(message = "Push tokeni mütləqdir")
     private String pushToken;
 }

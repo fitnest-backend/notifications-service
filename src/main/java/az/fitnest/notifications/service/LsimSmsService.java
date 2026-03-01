@@ -23,15 +23,15 @@ public class LsimSmsService {
     private final WebClient webClient;
     private final LsimSmsProperties properties;
 
-    public Long sendSms(String msisdn, String text, String sender, 
+    public Long sendSms(String msisdn, String text, String sender,
                         Boolean unicode, String scheduled) {
         // 1. Generate key
         String key = LsimHashUtil.generateKey(
-            properties.getPassword(),
-            properties.getLogin(),
-            text,
-            msisdn,
-            sender
+                properties.getPassword(),
+                properties.getLogin(),
+                text,
+                msisdn,
+                sender
         );
 
         // 2. Build request
@@ -69,9 +69,10 @@ public class LsimSmsService {
 
     // convenience overload
     public Long sendSms(String msisdn, String text) {
-        return sendSms(msisdn, text, properties.getDefaultSender(), 
-                       properties.getDefaultUnicode(), "NOW");
+        return sendSms(msisdn, text, properties.getDefaultSender(),
+                properties.getDefaultUnicode(), "NOW");
     }
+
     public Integer checkBalance() {
         String key = LsimHashUtil.generateBalanceKey(properties.getPassword(), properties.getLogin());
 
@@ -83,31 +84,13 @@ public class LsimSmsService {
                 .block();
 
         if (response == null || (response.getErrorCode() != null && response.getErrorCode() != 0)) {
-            String errorMsg = response != null ? 
-                String.format("LSIM error %d: %s", response.getErrorCode(), response.getErrorMessage()) : 
-                "no response";
+            String errorMsg = response != null ?
+                    String.format("LSIM error %d: %s", response.getErrorCode(), response.getErrorMessage()) :
+                    "no response";
             log.error("Balance check failed: {}", errorMsg);
             throw new SmsBalanceException("Balansın yoxlanılması uğursuz oldu: " + errorMsg);
         }
         return response.getObj() != null ? response.getObj().intValue() : 0;
-    }
-
-
-    public class SmsLengthValidator {
-        public static boolean isWithinLimit(String text, boolean unicode) {
-            int maxChars;
-            if (unicode) {
-                if (text.length() <= 70) maxChars = 70;
-                else if (text.length() <= 134) maxChars = 134;
-                    // ... add more segments if your logic supports splitting
-                else maxChars = 603; // 9 segments
-            } else {
-                if (text.length() <= 160) maxChars = 160;
-                else if (text.length() <= 306) maxChars = 306;
-                else maxChars = 1377; // 9 segments
-            }
-            return text.length() <= maxChars;
-        }
     }
 
     public SmsStatus getDeliveryStatus(Long transactionId) {
@@ -159,5 +142,22 @@ public class LsimSmsService {
             throw new SmsReportException("Naməlum status kodu: " + statusCode);
         }
         return status;
+    }
+
+    public class SmsLengthValidator {
+        public static boolean isWithinLimit(String text, boolean unicode) {
+            int maxChars;
+            if (unicode) {
+                if (text.length() <= 70) maxChars = 70;
+                else if (text.length() <= 134) maxChars = 134;
+                    // ... add more segments if your logic supports splitting
+                else maxChars = 603; // 9 segments
+            } else {
+                if (text.length() <= 160) maxChars = 160;
+                else if (text.length() <= 306) maxChars = 306;
+                else maxChars = 1377; // 9 segments
+            }
+            return text.length() <= maxChars;
+        }
     }
 }

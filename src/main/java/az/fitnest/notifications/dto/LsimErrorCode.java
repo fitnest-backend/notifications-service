@@ -22,9 +22,6 @@ public enum LsimErrorCode {
     IP_NOT_ALLOWED(-110, "IP address not allowed"),
     TEXT_TOO_LONG(-500, "text more than allowed length");
 
-    private final int code;
-    private final String message;
-
     private static final Map<Integer, LsimErrorCode> CODE_MAP = new HashMap<>();
 
     static {
@@ -33,17 +30,12 @@ public enum LsimErrorCode {
         }
     }
 
+    private final int code;
+    private final String message;
+
     LsimErrorCode(int code, String message) {
         this.code = code;
         this.message = message;
-    }
-
-    public int getCode() {
-        return code;
-    }
-
-    public String getMessage() {
-        return message;
     }
 
     /**
@@ -62,5 +54,13 @@ public enum LsimErrorCode {
             throw new IllegalArgumentException("Unknown LSIM error code: " + code);
         }
         return error;
+    }
+
+    public int getCode() {
+        return code;
+    }
+
+    public String getMessage() {
+        return message;
     }
 }

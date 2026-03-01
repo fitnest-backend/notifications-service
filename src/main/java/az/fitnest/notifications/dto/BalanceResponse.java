@@ -11,8 +11,8 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Current SMS credit balance")
 public class BalanceResponse {
 
-    @Schema(description = "Remaining SMS credits", 
-            example = "1500", 
+    @Schema(description = "Remaining SMS credits",
+            example = "1500",
             requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer balance;
 }

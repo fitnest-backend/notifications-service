@@ -13,8 +13,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @EnableConfigurationProperties(LsimSmsProperties.class)
 public class NotificationsServiceApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(NotificationsServiceApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(NotificationsServiceApplication.class, args);
+    }
 
 }

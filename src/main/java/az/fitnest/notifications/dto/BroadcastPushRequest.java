@@ -12,10 +12,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BroadcastPushRequest {
-    
+
     @NotBlank(message = "Başlıq mütləqdir")
     private String title;
-    
+
     @NotBlank(message = "Mətn mütləqdir")
     private String body;
 }

@@ -16,9 +16,6 @@ public enum SmsStatus {
     UNDELIVERED(109, "Undelivered"),
     UNKNOWN(110, "Unknown (contact us)");
 
-    private final int code;
-    private final String description;
-
     private static final Map<Integer, SmsStatus> CODE_MAP = new HashMap<>();
 
     static {
@@ -27,17 +24,12 @@ public enum SmsStatus {
         }
     }
 
+    private final int code;
+    private final String description;
+
     SmsStatus(int code, String description) {
         this.code = code;
         this.description = description;
-    }
-
-    public int getCode() {
-        return code;
-    }
-
-    public String getDescription() {
-        return description;
     }
 
     /**
@@ -58,5 +50,13 @@ public enum SmsStatus {
             throw new IllegalArgumentException("Unknown SMS status code: " + code);
         }
         return status;
+    }
+
+    public int getCode() {
+        return code;
+    }
+
+    public String getDescription() {
+        return description;
     }
 }

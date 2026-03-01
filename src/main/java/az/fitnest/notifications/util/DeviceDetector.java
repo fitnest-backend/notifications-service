@@ -24,7 +24,7 @@ public class DeviceDetector {
         } else if (ua.contains("iphone") || ua.contains("ipad") || ua.contains("ios")) {
             return Device.Platform.IOS;
         }
-        
+
         return null;
     }
 

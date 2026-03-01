@@ -5,7 +5,8 @@ import az.fitnest.notifications.model.entity.Notification;
 
 public final class NotificationMapper {
 
-    private NotificationMapper() {}
+    private NotificationMapper() {
+    }
 
     public static NotificationDto toDto(Notification notification) {
         if (notification == null) {

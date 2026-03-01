@@ -1,4 +1,5 @@
 package az.fitnest.notifications.service.impl;
+
 import az.fitnest.notifications.model.enums.NotificationStatus;
 
 import az.fitnest.notifications.grpc.IdentityGrpcClient;
@@ -67,9 +68,9 @@ public class NotificationServiceImpl implements NotificationService {
                                 device.setPlatform(platform);
                                 device.setCreatedAt(LocalDateTime.now());
                                 deviceRepository.save(device);
-                                 log.info("Registered new device token for user {}", userId);
-                             }
-                     );
+                                log.info("Registered new device token for user {}", userId);
+                            }
+                    );
         } catch (DataIntegrityViolationException e) {
             log.warn("Device token {} already registered concurrently, ignoring.", maskToken(pushToken));
         }
@@ -90,7 +91,7 @@ public class NotificationServiceImpl implements NotificationService {
         // 1. Save Pending Notification in a transaction to guarantee it's recorded
         Notification notification = savePendingNotification(userId, title, body);
         Long notificationId = notification.getId();
-        
+
         // 2. Fetch device tokens
         List<String> tokens = deviceRepository.findPushTokensByUserId(userId);
         if (tokens.isEmpty()) {
@@ -100,7 +101,7 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         Map<String, String> payload = data != null ? data : Collections.emptyMap();
-        
+
         // 3. Build Multicast Message with Platform Specific Configs
         MulticastMessage message = MulticastMessage.builder()
                 .addAllTokens(tokens)
@@ -144,7 +145,7 @@ public class NotificationServiceImpl implements NotificationService {
                         FirebaseMessagingException e = sendResponse.getException();
                         String errorCode = e.getMessagingErrorCode().name();
                         log.warn("Failed to send push to token {} for user {}: {}", maskToken(tokens.get(i)), userId, errorCode);
-                        
+
                         if ("UNREGISTERED".equals(errorCode) || "INVALID_ARGUMENT".equals(errorCode)) {
                             failedTokensToRemove.add(tokens.get(i));
                         }
@@ -221,7 +222,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         try {
             BatchResponse response = firebaseMessaging.sendEachForMulticast(message);
-            log.info("Broadcast push sent to {} devices. Success: {}, Failed: {}", 
+            log.info("Broadcast push sent to {} devices. Success: {}, Failed: {}",
                     tokens.size(), response.getSuccessCount(), response.getFailureCount());
         } catch (FirebaseMessagingException e) {
             log.error("Fatal error during broadcast push: ", e);
@@ -256,7 +257,7 @@ public class NotificationServiceImpl implements NotificationService {
         for (String token : staleTokens) {
             deviceRepository.deleteByPushToken(token);
         }
-        
+
         NotificationStatus finalStatus = NotificationStatus.FAILED;
         if (sentCount > 0 && failedCount == 0) {
             finalStatus = NotificationStatus.SENT;
@@ -302,10 +303,10 @@ public class NotificationServiceImpl implements NotificationService {
 
         // 1. Save Notification record for in-app history (linked to user)
         savePendingNotification(device.getUserId(), title, body);
-        
+
         // 2. Send push to the specific registered device
         sendPushNotification(device.getPushToken(), title, body, Collections.emptyMap());
-        
+
         log.info("Direct notification sent to device {}", deviceId);
     }
 
@@ -324,8 +325,8 @@ public class NotificationServiceImpl implements NotificationService {
                             pageable.getSort().stream()
                                     .map(order -> {
                                         if ("createdAt".equals(order.getProperty())) {
-                                            return order.isAscending() ? 
-                                                    org.springframework.data.domain.Sort.Order.asc("createdDate") : 
+                                            return order.isAscending() ?
+                                                    org.springframework.data.domain.Sort.Order.asc("createdDate") :
                                                     org.springframework.data.domain.Sort.Order.desc("createdDate");
                                         }
                                         return order;

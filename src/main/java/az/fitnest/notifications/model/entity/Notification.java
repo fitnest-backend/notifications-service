@@ -1,4 +1,5 @@
 package az.fitnest.notifications.model.entity;
+
 import az.fitnest.notifications.model.enums.NotificationStatus;
 
 import jakarta.persistence.Column;

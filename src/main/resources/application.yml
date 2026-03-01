@@ -156,7 +156,7 @@ springdoc:
   default-produces-media-type: application/json
   writer-with-default-pretty-printer: false
 
- # Lsim-sms
+  # Lsim-sms
 
 lsim:
   sms:

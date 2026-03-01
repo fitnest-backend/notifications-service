@@ -1,4 +1,5 @@
 package az.fitnest.notifications.configuration;
+
 import az.fitnest.notifications.model.enums.NotificationStatus;
 
 import az.fitnest.notifications.model.entity.Notification;
@@ -31,7 +32,7 @@ public class DataInitializer {
             notification.setRead(false);
             notification.setStatus(NotificationStatus.SENT);
             notification.setSentCount(1);
-            
+
             notificationRepository.save(notification);
 
             Notification updateNotification = new Notification();

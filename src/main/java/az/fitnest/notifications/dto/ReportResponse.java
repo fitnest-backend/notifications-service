@@ -11,18 +11,18 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Delivery report for a sent SMS")
 public class ReportResponse {
 
-    @Schema(description = "Transaction ID", 
-            example = "123456789", 
+    @Schema(description = "Transaction ID",
+            example = "123456789",
             requiredMode = Schema.RequiredMode.REQUIRED)
     private Long transactionId;
 
-    @Schema(description = "Delivery status code (100-109)", 
-            example = "101", 
+    @Schema(description = "Delivery status code (100-109)",
+            example = "101",
             requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer statusCode;
 
-    @Schema(description = "Human-readable delivery status", 
-            example = "Delivered", 
+    @Schema(description = "Human-readable delivery status",
+            example = "Delivered",
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String statusDescription;
 

@@ -38,7 +38,7 @@ public class DeviceController {
     public ResponseEntity<Void> registerDevice(
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody DeviceRegistrationRequest request) {
-        
+
         Device.Platform platform = DeviceDetector.detectPlatform();
         if (platform == null) {
             log.warn("Could not detect platform from User-Agent for user {}", userId);

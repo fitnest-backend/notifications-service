@@ -15,11 +15,11 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class NotificationCounter {
-    
+
     @Id
     @Column(name = "user_id")
     private Long userId;
-    
+
     @Column(name = "unread", nullable = false)
     private Integer unread;
 }
