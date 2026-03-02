@@ -39,6 +39,11 @@ public class EmailServiceImpl implements EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             log.info("Sending HTML email to: {} with subject: {} using template: {}", to, subject, templateName);
+            helper.setFrom(fromAddress);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
+
             mailSender.send(message);
             log.info("Successfully sent HTML email to: {}", to);
         } catch (Exception e) {
