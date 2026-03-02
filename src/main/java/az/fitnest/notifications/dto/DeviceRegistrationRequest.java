@@ -1,12 +1,10 @@
 package az.fitnest.notifications.dto;
 
-import az.fitnest.notifications.model.entity.Device;
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
+import lombok.Builder;
 
-@Data
-public class DeviceRegistrationRequest {
-
+@Builder
+public record DeviceRegistrationRequest(
     @NotBlank(message = "Push tokeni mütləqdir")
-    private String pushToken;
-}
+    String pushToken
+) {}

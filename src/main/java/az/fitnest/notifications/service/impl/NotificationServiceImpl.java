@@ -20,7 +20,6 @@ import com.google.firebase.messaging.ApnsConfig;
 import com.google.firebase.messaging.Aps;
 import com.google.firebase.messaging.*;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
     private final LsimSmsService lsimSmsService;
@@ -47,7 +45,6 @@ public class NotificationServiceImpl implements NotificationService {
     public void sendWelcomeSms(String phoneNumber) {
         String message = "Xidmətimizə xoş gəlmisiniz!";
         Long transactionId = lsimSmsService.sendSms(phoneNumber, message);
-        log.info("SMS sent, transaction ID: {}", transactionId);
     }
 
     @Transactional
@@ -59,7 +56,6 @@ public class NotificationServiceImpl implements NotificationService {
                                 device.setUserId(userId);
                                 device.setPlatform(platform);
                                 deviceRepository.save(device);
-                                log.info("Updated device token for user {}", userId);
                             },
                             () -> {
                                 Device device = new Device();
@@ -68,11 +64,9 @@ public class NotificationServiceImpl implements NotificationService {
                                 device.setPlatform(platform);
                                 device.setCreatedAt(LocalDateTime.now());
                                 deviceRepository.save(device);
-                                log.info("Registered new device token for user {}", userId);
                             }
                     );
         } catch (DataIntegrityViolationException e) {
-            log.warn("Device token {} already registered concurrently, ignoring.", maskToken(pushToken));
         }
     }
 
@@ -81,11 +75,9 @@ public class NotificationServiceImpl implements NotificationService {
         try {
             String sessionStatus = identityGrpcClient.getUserSessionStatus(userId);
             if (!"HAVE_SESSIONS".equals(sessionStatus)) {
-                log.info("User {} has status {}, skipping push notification.", userId, sessionStatus);
                 return PushResult.builder().notificationId(-1L).build(); // -1 or handle as needed
             }
         } catch (Exception e) {
-            log.warn("Failed to check session status for user {}, proceeding with push attempt.", userId);
         }
 
         // 1. Save Pending Notification in a transaction to guarantee it's recorded
@@ -95,7 +87,6 @@ public class NotificationServiceImpl implements NotificationService {
         // 2. Fetch device tokens
         List<String> tokens = deviceRepository.findPushTokensByUserId(userId);
         if (tokens.isEmpty()) {
-            log.info("No devices registered for user {}, marking notification {} as failed.", userId, notificationId);
             updateNotificationStatus(notificationId, NotificationStatus.FAILED, 0, 0, "No registered devices");
             return PushResult.builder().notificationId(notificationId).build();
         }
@@ -144,7 +135,6 @@ public class NotificationServiceImpl implements NotificationService {
                     if (!sendResponse.isSuccessful()) {
                         FirebaseMessagingException e = sendResponse.getException();
                         String errorCode = e.getMessagingErrorCode().name();
-                        log.warn("Failed to send push to token {} for user {}: {}", maskToken(tokens.get(i)), userId, errorCode);
 
                         if ("UNREGISTERED".equals(errorCode) || "INVALID_ARGUMENT".equals(errorCode)) {
                             failedTokensToRemove.add(tokens.get(i));
@@ -152,13 +142,10 @@ public class NotificationServiceImpl implements NotificationService {
                     }
                 }
             }
-            log.info("Push multicasted to {} tokens for user {}. Success: {}, Failed: {}", tokens.size(), userId, sentCount, failedCount);
         } catch (FirebaseMessagingException e) {
-            log.error("Fatal error sending push multicast to user {}: ", userId, e);
             failedCount = tokens.size();
             failureReason = e.getMessage();
         } catch (Exception e) {
-            log.error("Unexpected error sending push to user {}: ", userId, e);
             failedCount = tokens.size();
             failureReason = e.getMessage();
         }
@@ -179,7 +166,6 @@ public class NotificationServiceImpl implements NotificationService {
     public void broadcastPushNotification(String title, String body) {
         List<String> tokens = deviceRepository.findAllPushTokens();
         if (tokens.isEmpty()) {
-            log.info("No devices registered for broadcast");
             return;
         }
 
@@ -222,12 +208,8 @@ public class NotificationServiceImpl implements NotificationService {
 
         try {
             BatchResponse response = firebaseMessaging.sendEachForMulticast(message);
-            log.info("Broadcast push sent to {} devices. Success: {}, Failed: {}",
-                    tokens.size(), response.getSuccessCount(), response.getFailureCount());
         } catch (FirebaseMessagingException e) {
-            log.error("Fatal error during broadcast push: ", e);
         } catch (Exception e) {
-            log.error("Unexpected error during broadcast push: ", e);
         }
     }
 
@@ -285,12 +267,9 @@ public class NotificationServiceImpl implements NotificationService {
                     .build();
 
             String response = firebaseMessaging.send(message);
-            log.info("Successfully sent simple push notification to token {}: {}", maskToken(token), response);
         } catch (FirebaseMessagingException e) {
-            log.error("Error sending push notification to token {}: ", maskToken(token), e);
             String errorCode = e.getMessagingErrorCode().name();
             if ("UNREGISTERED".equals(errorCode) || "INVALID_ARGUMENT".equals(errorCode)) {
-                log.info("Removing stale token: {}", maskToken(token));
                 deviceRepository.deleteByPushToken(token);
             }
         }
@@ -307,7 +286,6 @@ public class NotificationServiceImpl implements NotificationService {
         // 2. Send push to the specific registered device
         sendPushNotification(device.getPushToken(), title, body, Collections.emptyMap());
 
-        log.info("Direct notification sent to device {}", deviceId);
     }
 
     public Page<NotificationDto> getUserNotifications(Long userId, Pageable pageable) {

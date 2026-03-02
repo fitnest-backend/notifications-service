@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,7 +24,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/devices")
 @RequiredArgsConstructor
-@Slf4j
 @Tag(name = "Devices", description = "İstifadəçi cihazlarını və push tokenlərini idarə etmək üçün ucluqlar")
 @SecurityRequirement(name = "bearerAuth")
 public class DeviceController {
@@ -41,14 +39,13 @@ public class DeviceController {
 
         Device.Platform platform = DeviceDetector.detectPlatform();
         if (platform == null) {
-            log.warn("Could not detect platform from User-Agent for user {}", userId);
             // Defaulting to ANDROID or returning error? 
             // Most clients use Android/iOS strings. Defaulting to ANDROID for now or just letting it be null if DB allows?
             // DB has nullable=false. Let's default to ANDROID if undetected but logged.
             platform = Device.Platform.ANDROID;
         }
 
-        notificationService.registerDevice(userId, request.getPushToken(), platform);
+        notificationService.registerDevice(userId, request.pushToken(), platform);
         return ResponseEntity.ok().build();
     }
 
@@ -56,7 +53,6 @@ public class DeviceController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<DeviceDto>> getAllDevices() {
-        log.info("Admin request to get all registered devices");
         List<DeviceDto> devices = deviceRepository.findAll().stream()
                 .map(device -> DeviceDto.builder()
                         .deviceId(device.getDeviceId())
@@ -73,7 +69,6 @@ public class DeviceController {
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<DeviceDto>> getDevicesByUserId(@PathVariable Long userId) {
-        log.info("Admin request to get devices for user {}", userId);
         List<DeviceDto> devices = deviceRepository.findAllByUserId(userId).stream()
                 .map(device -> DeviceDto.builder()
                         .deviceId(device.getDeviceId())
@@ -90,8 +85,7 @@ public class DeviceController {
     @PostMapping("/send")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> sendPushToDevice(@Valid @RequestBody DirectPushRequest request) {
-        log.info("Admin request to send notification to device {}", request.getDeviceId());
-        notificationService.sendToDevice(request.getDeviceId(), request.getTitle(), request.getBody());
+        notificationService.sendToDevice(request.deviceId(), request.title(), request.body());
         return ResponseEntity.ok().build();
     }
 }

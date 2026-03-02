@@ -45,11 +45,11 @@ public class SmsController {
     })
     public ResponseEntity<SendSmsResponse> sendSms(@Valid @RequestBody SendSmsRequest request) {
         Long transactionId = lsimSmsService.sendSms(
-                request.getMsisdn(),
-                request.getText(),
-                request.getSender(),
-                request.getUnicode(),
-                request.getScheduled()
+                request.msisdn(),
+                request.text(),
+                request.sender(),
+                request.unicode(),
+                request.scheduled()
         );
         return ResponseEntity.ok(new SendSmsResponse(transactionId));
     }

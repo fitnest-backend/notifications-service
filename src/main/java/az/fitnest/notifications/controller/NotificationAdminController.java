@@ -24,7 +24,7 @@ public class NotificationAdminController {
     @Operation(summary = "Yayım bildirişi göndərin (Admin)", description = "Bütün istifadəçilərə push bildirişi göndərir. Admin rolu tələb olunur.")
     @PostMapping("/broadcast")
     public ResponseEntity<Void> broadcast(@Valid @RequestBody BroadcastPushRequest request) {
-        notificationService.broadcastPushNotification(request.getTitle(), request.getBody());
+        notificationService.broadcastPushNotification(request.title(), request.body());
         return ResponseEntity.ok().build();
     }
 }

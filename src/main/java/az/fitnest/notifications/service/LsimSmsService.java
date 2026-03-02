@@ -10,14 +10,12 @@ import az.fitnest.notifications.dto.LsimSendSmsRequest;
 import az.fitnest.notifications.dto.SmsStatus;
 import az.fitnest.notifications.util.LsimHashUtil;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
 public class LsimSmsService {
     private final WebClient webClient;
@@ -58,13 +56,12 @@ public class LsimSmsService {
         if (response == null) {
             throw new SmsSendException("LSIM-dən boş cavab gəldi");
         }
-        if (response.getErrorCode() != null && response.getErrorCode() != 0) {
-            log.error("LSIM error: {} - {}", response.getErrorCode(), response.getErrorMessage());
-            throw new SmsSendException("LSIM xətası: " + response.getErrorMessage());
+        if (response.errorCode() != null && response.errorCode() != 0) {
+            throw new SmsSendException("LSIM xətası: " + response.errorMessage());
         }
 
         // 5. Return transaction ID
-        return response.getObj();
+        return response.obj();
     }
 
     // convenience overload
@@ -83,14 +80,13 @@ public class LsimSmsService {
                 .bodyToMono(LsimApiResponse.class)
                 .block();
 
-        if (response == null || (response.getErrorCode() != null && response.getErrorCode() != 0)) {
+        if (response == null || (response.errorCode() != null && response.errorCode() != 0)) {
             String errorMsg = response != null ?
-                    String.format("LSIM error %d: %s", response.getErrorCode(), response.getErrorMessage()) :
+                    String.format("LSIM error %d: %s", response.errorCode(), response.errorMessage()) :
                     "no response";
-            log.error("Balance check failed: {}", errorMsg);
             throw new SmsBalanceException("Balansın yoxlanılması uğursuz oldu: " + errorMsg);
         }
-        return response.getObj() != null ? response.getObj().intValue() : 0;
+        return response.obj() != null ? response.obj().intValue() : 0;
     }
 
     public SmsStatus getDeliveryStatus(Long transactionId) {
@@ -127,16 +123,16 @@ public class LsimSmsService {
             throw new SmsReportException("LSIM-dən boş cavab gəldi");
         }
 
-        if (response.getErrorCode() != null && response.getErrorCode() != 0) {
-            throw new SmsReportException("Hesabat uğursuz oldu: " + response.getErrorMessage(),
-                    response.getErrorCode());
+        if (response.errorCode() != null && response.errorCode() != 0) {
+            throw new SmsReportException("Hesabat uğursuz oldu: " + response.errorMessage(),
+                    response.errorCode());
         }
 
-        if (response.getObj() == null) {
+        if (response.obj() == null) {
             throw new SmsReportException("LSIM cavabında status kodu yoxdur");
         }
 
-        Integer statusCode = response.getObj().intValue();  // 100-109
+        Integer statusCode = response.obj().intValue();  // 100-109
         SmsStatus status = SmsStatus.fromCode(statusCode);
         if (status == null) {
             throw new SmsReportException("Naməlum status kodu: " + statusCode);

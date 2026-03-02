@@ -4,14 +4,12 @@ import az.fitnest.notifications.service.EmailService;
 import az.fitnest.notifications.service.LsimSmsService;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @GrpcService
-@Slf4j
 @RequiredArgsConstructor
 public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.NotificationsServiceImplBase {
 
@@ -25,11 +23,9 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             String to = request.getTo();
             String message = request.getMessage();
 
-            log.info("Sending SMS to {}: {}", to, message);
 
             Long transactionId = lsimSmsService.sendSms(to, message);
 
-            log.info("SMS sent successfully, transaction ID: {}", transactionId);
 
             SendSMSResponse response = SendSMSResponse.newBuilder()
                     .setSuccess(true)
@@ -39,7 +35,6 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             responseObserver.onCompleted();
 
         } catch (Exception e) {
-            log.error("Failed to send SMS", e);
 
             SendSMSResponse response = SendSMSResponse.newBuilder()
                     .setSuccess(false)
@@ -59,11 +54,9 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             String templateName = request.getTemplateName();
             Map<String, String> variables = request.getVariablesMap();
 
-            log.info("Sending HTML email to {} with template {}", to, templateName);
 
             emailService.sendHtmlEmail(to, subject, templateName, new HashMap<>(variables));
 
-            log.info("HTML email sent successfully to {}", to);
 
             SendEmailResponse response = SendEmailResponse.newBuilder()
                     .setSuccess(true)
@@ -73,7 +66,6 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             responseObserver.onCompleted();
 
         } catch (Exception e) {
-            log.error("Failed to send HTML email", e);
 
             SendEmailResponse response = SendEmailResponse.newBuilder()
                     .setSuccess(false)
@@ -92,11 +84,9 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             String subject = request.getSubject();
             String body = request.getBody();
 
-            log.info("Sending simple email to {}", to);
 
             emailService.sendSimpleEmail(to, subject, body);
 
-            log.info("Simple email sent successfully to {}", to);
 
             SendEmailResponse response = SendEmailResponse.newBuilder()
                     .setSuccess(true)
@@ -106,7 +96,6 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             responseObserver.onCompleted();
 
         } catch (Exception e) {
-            log.error("Failed to send simple email", e);
 
             SendEmailResponse response = SendEmailResponse.newBuilder()
                     .setSuccess(false)
@@ -126,20 +115,18 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             String body = request.getBody();
             Map<String, String> data = request.getDataMap();
 
-            log.info("Sending push notification to user {}: {}", userId, title);
 
             az.fitnest.notifications.dto.PushResult result = notificationService.sendPushToUser(userId, title, body, data);
 
             SendPushNotificationResponse response = SendPushNotificationResponse.newBuilder()
                     .setSuccess(true)
-                    .setTargetDevices(result.getSentCount())
+                    .setTargetDevices(result.sentCount())
                     .build();
 
             responseObserver.onNext(response);
             responseObserver.onCompleted();
 
         } catch (Exception e) {
-            log.error("Failed to send push notification", e);
 
             SendPushNotificationResponse response = SendPushNotificationResponse.newBuilder()
                     .setSuccess(false)
@@ -158,18 +145,17 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             int page = request.getPage() >= 0 ? request.getPage() : 0;
             int size = request.getSize() > 0 ? request.getSize() : 20;
 
-            log.info("Retrieving notifications for user: {} page: {} size: {}", userId, page, size);
 
             org.springframework.data.domain.Page<az.fitnest.notifications.dto.NotificationDto> notificationPage =
                     notificationService.getUserNotifications(userId, org.springframework.data.domain.PageRequest.of(page, size));
 
             java.util.List<NotificationDto> notifications = notificationPage.getContent().stream()
                     .map(dto -> NotificationDto.newBuilder()
-                            .setId(dto.getId())
-                            .setTitle(dto.getTitle())
-                            .setBody(dto.getBody())
+                            .setId(dto.id())
+                            .setTitle(dto.title())
+                            .setBody(dto.body())
                             .setIsRead(dto.isRead())
-                            .setCreatedAt(dto.getCreatedAt() != null ? dto.getCreatedAt().toString() : "")
+                            .setCreatedAt(dto.createdAt() != null ? dto.createdAt().toString() : "")
                             .build())
                     .collect(java.util.stream.Collectors.toList());
 
@@ -183,7 +169,6 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception e) {
-            log.error("Failed to retrieve notifications", e);
             responseObserver.onError(io.grpc.Status.INTERNAL.withDescription(e.getMessage()).withCause(e).asRuntimeException());
         }
     }

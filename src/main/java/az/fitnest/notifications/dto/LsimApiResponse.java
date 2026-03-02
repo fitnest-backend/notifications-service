@@ -1,11 +1,11 @@
 package az.fitnest.notifications.dto;
 
-import lombok.Data;
+import lombok.Builder;
 
-@Data
-public class LsimApiResponse {
-    private String successMessage;
-    private String errorMessage;
-    private Long obj;          // transaction ID (for send) or balance (for balance API)
-    private Integer errorCode;
-}
+@Builder
+public record LsimApiResponse(
+    String successMessage,
+    String errorMessage,
+    Long obj, // transaction ID (for send) or balance (for balance API)
+    Integer errorCode
+) {}

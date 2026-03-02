@@ -1,29 +1,15 @@
 package az.fitnest.notifications.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.time.LocalDateTime;
-import java.util.Map;
+import lombok.Builder;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ErrorResponse {
-
-    private String message;
-
-    private String code;
-
-    private LocalDateTime timestamp;
-
-    private String path;
-
-    private Map<String, Object> details;
-
+public record ErrorResponse(
+    String message,
+    String code,
+    LocalDateTime timestamp,
+    String path
+) {
     public static ErrorResponse of(String message, String code) {
         return ErrorResponse.builder()
                 .message(message)
