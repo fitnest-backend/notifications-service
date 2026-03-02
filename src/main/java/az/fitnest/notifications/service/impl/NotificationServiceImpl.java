@@ -20,6 +20,8 @@ import com.google.firebase.messaging.ApnsConfig;
 import com.google.firebase.messaging.Aps;
 import com.google.firebase.messaging.*;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,14 +34,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
+    private static final Logger logger = LoggerFactory.getLogger(NotificationServiceImpl.class);
+
     private final LsimSmsService lsimSmsService;
     private final DeviceRepository deviceRepository;
     private final NotificationRepository notificationRepository;
-    private final FirebaseMessaging firebaseMessaging;
+    private final Optional<FirebaseMessaging> firebaseMessaging;
     private final IdentityGrpcClient identityGrpcClient;
 
     public void sendWelcomeSms(String phoneNumber) {
@@ -71,6 +76,12 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     public PushResult sendPushToUser(Long userId, String title, String body, Map<String, String> data) {
+        // Check if Firebase is available
+        if (firebaseMessaging.isEmpty()) {
+            logger.warn("Firebase is not initialized. Cannot send push notification to user: {}", userId);
+            return PushResult.builder().notificationId(-1L).build();
+        }
+
         // Check if user has active sessions in identity-service
         try {
             String sessionStatus = identityGrpcClient.getUserSessionStatus(userId);
@@ -124,7 +135,7 @@ public class NotificationServiceImpl implements NotificationService {
         String failureReason = null;
 
         try {
-            BatchResponse response = firebaseMessaging.sendEachForMulticast(message);
+            BatchResponse response = firebaseMessaging.get().sendEachForMulticast(message);
             sentCount = response.getSuccessCount();
             failedCount = response.getFailureCount();
 
@@ -164,6 +175,12 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Transactional
     public void broadcastPushNotification(String title, String body) {
+        // Check if Firebase is available
+        if (firebaseMessaging.isEmpty()) {
+            logger.warn("Firebase is not initialized. Cannot send broadcast push notification.");
+            return;
+        }
+
         List<String> tokens = deviceRepository.findAllPushTokens();
         if (tokens.isEmpty()) {
             return;
@@ -207,9 +224,11 @@ public class NotificationServiceImpl implements NotificationService {
                 .build();
 
         try {
-            BatchResponse response = firebaseMessaging.sendEachForMulticast(message);
+            BatchResponse response = firebaseMessaging.get().sendEachForMulticast(message);
         } catch (FirebaseMessagingException e) {
+            logger.error("Firebase messaging error during broadcast: {}", e.getMessage(), e);
         } catch (Exception e) {
+            logger.error("Unexpected error during broadcast push notification: {}", e.getMessage(), e);
         }
     }
 
@@ -255,6 +274,12 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     public void sendPushNotification(String token, String title, String body, Map<String, String> data) {
+        // Check if Firebase is available
+        if (firebaseMessaging.isEmpty()) {
+            logger.warn("Firebase is not initialized. Cannot send push notification to token: {}", maskToken(token));
+            return;
+        }
+
         try {
             Map<String, String> payload = data != null ? data : Collections.emptyMap();
             com.google.firebase.messaging.Message message = com.google.firebase.messaging.Message.builder()
@@ -266,7 +291,7 @@ public class NotificationServiceImpl implements NotificationService {
                     .putAllData(payload)
                     .build();
 
-            String response = firebaseMessaging.send(message);
+            String response = firebaseMessaging.get().send(message);
         } catch (FirebaseMessagingException e) {
             String errorCode = e.getMessagingErrorCode().name();
             if ("UNREGISTERED".equals(errorCode) || "INVALID_ARGUMENT".equals(errorCode)) {

@@ -142,6 +142,9 @@ media:
 app:
   security:
     internal-token: ${APP_SECURITY_INTERNAL_TOKEN:fitnest-internal-token-2024-secure-v1}
+  firebase:
+    enabled: ${APP_FIREBASE_ENABLED:true}
+    config-path: ${APP_FIREBASE_CONFIG_PATH:/app/firebase/serviceAccountKey.json}
 
 management:
   endpoints:
