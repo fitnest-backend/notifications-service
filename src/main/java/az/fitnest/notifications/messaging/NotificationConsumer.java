@@ -20,8 +20,14 @@ public class NotificationConsumer {
     private final LsimSmsService smsService;
     private final NotificationService notificationService;
 
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        log.info("NotificationConsumer initialized and listening to 'notification-events' topic.");
+    }
+
     @KafkaListener(topics = "notification-events", groupId = "notifications-group")
     public void consumeNotification(NotificationEvent event) {
+        log.info("Received Kafka message for recipient: {}, type: {}", event.getRecipient(), event.getType());
         log.info("Consumed notification event: {}, type: {}, recipient: {}", 
                 event.getEventId(), event.getType(), event.getRecipient());
 
