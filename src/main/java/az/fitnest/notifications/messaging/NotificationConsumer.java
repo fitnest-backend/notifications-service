@@ -5,6 +5,7 @@ import az.fitnest.notifications.service.LsimSmsService;
 import az.fitnest.notifications.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +14,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
+@Lazy(false)
 @RequiredArgsConstructor
 public class NotificationConsumer {
 
