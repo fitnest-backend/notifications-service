@@ -38,14 +38,11 @@ public class EmailServiceImpl implements EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(fromAddress);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(htmlContent, true);
-
+            log.info("Sending HTML email to: {} with subject: {} using template: {}", to, subject, templateName);
             mailSender.send(message);
+            log.info("Successfully sent HTML email to: {}", to);
         } catch (Exception e) {
-            log.error("Failed to send HTML email to: {}, subject: {}", to, subject, e);
+            log.error("Failed to send HTML email to: {}, subject: {}. Check SMTP credentials and connection.", to, subject, e);
         }
     }
 
@@ -59,9 +56,11 @@ public class EmailServiceImpl implements EmailService {
             message.setSubject(subject);
             message.setText(content);
 
+            log.info("Sending simple email to: {} with subject: {}", to, subject);
             mailSender.send(message);
+            log.info("Successfully sent simple email to: {}", to);
         } catch (Exception e) {
-            log.error("Failed to send simple email to: {}, subject: {}", to, subject, e);
+            log.error("Failed to send simple email to: {}, subject: {}. Check SMTP credentials and connection.", to, subject, e);
         }
     }
 }
