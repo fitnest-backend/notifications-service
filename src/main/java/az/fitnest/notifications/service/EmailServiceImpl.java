@@ -3,6 +3,7 @@ package az.fitnest.notifications.service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -14,6 +15,7 @@ import org.thymeleaf.context.Context;
 
 import java.util.Map;
 
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class EmailServiceImpl implements EmailService {
@@ -43,7 +45,7 @@ public class EmailServiceImpl implements EmailService {
 
             mailSender.send(message);
         } catch (Exception e) {
-            // Error handling could be improved here (e.g. throwing custom exception or alerting monitoring system)
+            log.error("Failed to send HTML email to: {}, subject: {}", to, subject, e);
         }
     }
 
@@ -59,7 +61,7 @@ public class EmailServiceImpl implements EmailService {
 
             mailSender.send(message);
         } catch (Exception e) {
-            // Error handling could be improved here
+            log.error("Failed to send simple email to: {}, subject: {}", to, subject, e);
         }
     }
 }

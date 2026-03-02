@@ -83,6 +83,7 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "az.fitnest.*"
+        spring.json.value.default.type: "az.fitnest.notifications.messaging.NotificationEvent"
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
