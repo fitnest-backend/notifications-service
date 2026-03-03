@@ -11,6 +11,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
+
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -19,12 +22,18 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private final MessageSource messageSource;
+
+    public GlobalExceptionHandler(MessageSource messageSource) {
+        this.messageSource = messageSource;
+    }
+
     @ExceptionHandler(BaseException.class)
     public ResponseEntity<ApiResponse<Void>> handleBaseException(BaseException ex, HttpServletRequest request) {
         HttpStatus status = ex.getHttpStatus();
         return ResponseEntity
                 .status(status)
-                .body(ApiResponse.error(buildError(ex.getErrorCode(), ex.getMessage(), status, request.getRequestURI(), null)));
+                .body(ApiResponse.error(buildError(ex.getErrorCode(), getLocalizedMessage(ex.getErrorCode(), ex.getMessage()), status, request.getRequestURI(), null)));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -41,12 +50,12 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(status)
-                .body(ApiResponse.error(buildError("VALIDATION_ERROR", "Doğrulama xətası", status, request.getRequestURI(), details)));
+                .body(ApiResponse.error(buildError("VALIDATION_ERROR", getMessage("error.validation"), status, request.getRequestURI(), details)));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex, HttpServletRequest request) {
-        String message = "Yanlış sorğu formatı";
+        String message = getMessage("error.invalid_json_format");
         String detailText = "Invalid request body";
 
         Throwable cause = ex.getCause();
@@ -76,7 +85,42 @@ public class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         return ResponseEntity
                 .status(status)
-                .body(ApiResponse.error(buildError("INTERNAL_SERVER_ERROR", "Daxili server xətası", status, request.getRequestURI(), null)));
+                .body(ApiResponse.error(buildError("INTERNAL_SERVER_ERROR", getMessage("error.internal_server_error"), status, request.getRequestURI(), null)));
+    }
+
+    private String getLocalizedMessage(String errorCode, String defaultMessage) {
+        String key = "error." + errorCode.toLowerCase();
+        String message = getMessage(key);
+        if (message.equals(key)) {
+            // Try resolving by original errorCode
+            message = getMessage(errorCode);
+            if (message.equals(errorCode)) {
+                return safeMessage(defaultMessage);
+            }
+        }
+        return message;
+    }
+
+    private String safeMessage(String msg) {
+        if (msg == null || msg.isBlank()) {
+            return getMessage("error.unexpected");
+        }
+        // If the message looks like a key, try to resolve it
+        if (msg.startsWith("error.")) {
+            String resolved = getMessage(msg);
+            if (!resolved.equals(msg)) {
+                return resolved;
+            }
+        }
+        return msg;
+    }
+
+    private String getMessage(String code) {
+        try {
+            return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
+        } catch (Exception e) {
+            return code; // Fallback to code if message not found
+        }
     }
 
     private ApiError buildError(String code, String message, HttpStatus status, String path, Object details) {
