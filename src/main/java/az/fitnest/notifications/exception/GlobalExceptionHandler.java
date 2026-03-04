@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
         List<Map<String, String>> fieldIssues = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> Map.of(
                         "field", error.getField(),
-                        "issue", error.getDefaultMessage()
+                        "issue", safeMessage(error.getDefaultMessage())
                 ))
                 .toList();
 
@@ -55,29 +55,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex, HttpServletRequest request) {
-        String message = getMessage("error.invalid_json_format");
-        String detailText = "Invalid request body";
-
-        Throwable cause = ex.getCause();
-        if (cause instanceof JsonMappingException jme) {
-            if (!jme.getPath().isEmpty()) {
-                String field = jme.getPath().stream()
-                        .map(JsonMappingException.Reference::getFieldName)
-                        .collect(Collectors.joining("."));
-                detailText = "Invalid value for field: " + field;
-            } else {
-                detailText = jme.getOriginalMessage();
-            }
-        } else if (cause != null) {
-            detailText = cause.getMessage();
-        }
-
         HttpStatus status = HttpStatus.BAD_REQUEST;
-        Map<String, Object> details = Map.of("message", detailText);
-
         return ResponseEntity
                 .status(status)
-                .body(ApiResponse.error(buildError("VALIDATION_ERROR", message, status, request.getRequestURI(), details)));
+                .body(ApiResponse.error(buildError("VALIDATION_ERROR", getMessage("error.invalid_json_format"), status, request.getRequestURI(), null)));
     }
 
     @ExceptionHandler(Exception.class)
