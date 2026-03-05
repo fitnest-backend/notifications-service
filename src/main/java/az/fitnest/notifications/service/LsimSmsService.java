@@ -54,10 +54,10 @@ public class LsimSmsService {
 
         // 4. Handle response
         if (response == null) {
-            throw new SmsSendException("LSIM-dən boş cavab gəldi");
+            throw new SmsSendException("error.sms_empty_response");
         }
         if (response.errorCode() != null && response.errorCode() != 0) {
-            throw new SmsSendException("LSIM xətası: " + response.errorMessage());
+            throw new SmsSendException("error.sms_send_failed");
         }
 
         // 5. Return transaction ID
@@ -84,7 +84,7 @@ public class LsimSmsService {
             String errorMsg = response != null ?
                     String.format("LSIM error %d: %s", response.errorCode(), response.errorMessage()) :
                     "no response";
-            throw new SmsBalanceException("Balansın yoxlanılması uğursuz oldu: " + errorMsg);
+            throw new SmsBalanceException("error.sms_balance_check_failed");
         }
         return response.obj() != null ? response.obj().intValue() : 0;
     }
@@ -120,22 +120,22 @@ public class LsimSmsService {
 
     private SmsStatus handleReportResponse(LsimApiResponse response) {
         if (response == null) {
-            throw new SmsReportException("LSIM-dən boş cavab gəldi");
+            throw new SmsReportException("error.sms_empty_response");
         }
 
         if (response.errorCode() != null && response.errorCode() != 0) {
-            throw new SmsReportException("Hesabat uğursuz oldu: " + response.errorMessage(),
+            throw new SmsReportException("error.sms_report_failed",
                     response.errorCode());
         }
 
         if (response.obj() == null) {
-            throw new SmsReportException("LSIM cavabında status kodu yoxdur");
+            throw new SmsReportException("error.sms_unknown_status");
         }
 
         Integer statusCode = response.obj().intValue();  // 100-109
         SmsStatus status = SmsStatus.fromCode(statusCode);
         if (status == null) {
-            throw new SmsReportException("Naməlum status kodu: " + statusCode);
+            throw new SmsReportException("error.sms_unknown_status");
         }
         return status;
     }
