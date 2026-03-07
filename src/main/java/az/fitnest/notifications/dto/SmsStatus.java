@@ -32,18 +32,10 @@ public enum SmsStatus {
         this.description = description;
     }
 
-    /**
-     * Returns the SmsStatus for the given integer code, or null if not found.
-     */
     public static SmsStatus fromCode(Integer code) {
         return CODE_MAP.get(code);
     }
 
-    /**
-     * Returns the SmsStatus for the given integer code, throwing an exception if not found.
-     *
-     * @throws IllegalArgumentException if code is unknown
-     */
     public static SmsStatus fromCodeOrThrow(Integer code) {
         SmsStatus status = CODE_MAP.get(code);
         if (status == null) {

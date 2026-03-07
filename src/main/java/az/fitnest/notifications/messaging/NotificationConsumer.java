@@ -30,7 +30,7 @@ public class NotificationConsumer {
     @KafkaListener(topics = "notification-events", groupId = "notifications-group")
     public void consumeNotification(NotificationEvent event) {
         log.info("Received Kafka message for recipient: {}, type: {}", event.getRecipient(), event.getType());
-        log.info("Consumed notification event: {}, type: {}, recipient: {}", 
+        log.info("Consumed notification event: {}, type: {}, recipient: {}",
                 event.getEventId(), event.getType(), event.getRecipient());
 
         try {
@@ -42,7 +42,6 @@ public class NotificationConsumer {
             }
         } catch (Exception e) {
             log.error("Failed to process notification event: {}", event.getEventId(), e);
-            // In a production environment, we might want to send this to a Dead Letter Queue (DLQ)
         }
     }
 
@@ -63,8 +62,6 @@ public class NotificationConsumer {
     }
 
     private void handlePush(NotificationEvent event) {
-        // NotificationService handles push via Firebase
-        // If we have a userId in variables, we can use sendPushToUser
         if (event.getVariables() != null && event.getVariables().containsKey("userId")) {
             Long userId = Long.valueOf(event.getVariables().get("userId"));
             notificationService.sendPushToUser(userId, event.getSubject(), event.getBody(), event.getVariables());

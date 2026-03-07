@@ -3,10 +3,6 @@ package az.fitnest.notifications.dto;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Error codes returned by LSIM Quick SMS API.
- * See: Error responses table in documentation.
- */
 public enum LsimErrorCode {
 
     NO_HOST(-100, "no host"),
@@ -38,16 +34,10 @@ public enum LsimErrorCode {
         this.message = message;
     }
 
-    /**
-     * Returns the LsimErrorCode for the given integer code, or null if not found.
-     */
     public static LsimErrorCode fromCode(Integer code) {
         return CODE_MAP.get(code);
     }
 
-    /**
-     * Returns the LsimErrorCode for the given integer code, or throws if not found.
-     */
     public static LsimErrorCode fromCodeOrThrow(Integer code) {
         LsimErrorCode error = CODE_MAP.get(code);
         if (error == null) {

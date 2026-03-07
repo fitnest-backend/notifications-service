@@ -12,10 +12,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
-/**
- * Application warmup configuration that pre-warms various resources at startup.
- * Mirrors identity-service to eliminate cold-start latency.
- */
 @Configuration
 public class ApplicationWarmupConfig {
 
@@ -33,9 +29,6 @@ public class ApplicationWarmupConfig {
         this.redisTemplate = redisTemplate;
     }
 
-    /**
-     * Warm up application resources after startup. Runs asynchronously so startup is not blocked.
-     */
     @EventListener(ApplicationReadyEvent.class)
     @Async
     public void warmupApplication() {
@@ -51,9 +44,6 @@ public class ApplicationWarmupConfig {
         warmupJit();
     }
 
-    /**
-     * Warm up database connection pool by executing a simple query several times to establish connections.
-     */
     private void warmupDatabase() {
         try {
             long start = System.currentTimeMillis();
@@ -70,9 +60,6 @@ public class ApplicationWarmupConfig {
         }
     }
 
-    /**
-     * Warm up Redis connection by issuing a lightweight command.
-     */
     private void warmupRedis() {
         try {
             long start = System.currentTimeMillis();
@@ -81,9 +68,6 @@ public class ApplicationWarmupConfig {
         }
     }
 
-    /**
-     * Warm up JIT compiler by touching common code paths.
-     */
     private void warmupJit() {
         try {
             long start = System.currentTimeMillis();

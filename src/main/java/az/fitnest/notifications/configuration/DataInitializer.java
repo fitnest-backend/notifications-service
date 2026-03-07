@@ -26,7 +26,7 @@ public class DataInitializer {
     private void initNotifications() {
         if (notificationRepository.count() == 0) {
             Notification notification = new Notification();
-            notification.setUserId(2L); // Sample Super Admin ID
+            notification.setUserId(2L);
             notification.setTitle("Welcome to Fitnest!");
             notification.setBody("We're glad to have you here. Explore our features and stay fit!");
             notification.setRead(false);
@@ -45,7 +45,6 @@ public class DataInitializer {
 
             notificationRepository.save(updateNotification);
 
-            // Add notifications for admin user with ID 1
             Notification adminNotification = new Notification();
             adminNotification.setUserId(1L);
             adminNotification.setTitle("Welcome Admin!");

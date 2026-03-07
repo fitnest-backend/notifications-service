@@ -23,7 +23,6 @@ public class LsimSmsService {
 
     public Long sendSms(String msisdn, String text, String sender,
                         Boolean unicode, String scheduled) {
-        // 1. Generate key
         String key = LsimHashUtil.generateKey(
                 properties.getPassword(),
                 properties.getLogin(),
@@ -32,7 +31,6 @@ public class LsimSmsService {
                 sender
         );
 
-        // 2. Build request
         LsimSendSmsRequest request = LsimSendSmsRequest.builder()
                 .login(properties.getLogin())
                 .key(key)
@@ -43,16 +41,14 @@ public class LsimSmsService {
                 .scheduled(scheduled != null ? scheduled : "NOW")
                 .build();
 
-        // 3. Make POST call
         LsimApiResponse response = webClient.post()
                 .uri("/quicksms/v1/smssender")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .retrieve()
                 .bodyToMono(LsimApiResponse.class)
-                .block();  // block for synchronous use; for reactive use .subscribe()
+                .block();
 
-        // 4. Handle response
         if (response == null) {
             throw new SmsSendException("error.sms_empty_response");
         }
@@ -60,11 +56,9 @@ public class LsimSmsService {
             throw new SmsSendException("error.sms_send_failed");
         }
 
-        // 5. Return transaction ID
         return response.obj();
     }
 
-    // convenience overload
     public Long sendSms(String msisdn, String text) {
         return sendSms(msisdn, text, properties.getDefaultSender(),
                 properties.getDefaultUnicode(), "NOW");
@@ -132,7 +126,7 @@ public class LsimSmsService {
             throw new SmsReportException("error.sms_unknown_status");
         }
 
-        Integer statusCode = response.obj().intValue();  // 100-109
+        Integer statusCode = response.obj().intValue();
         SmsStatus status = SmsStatus.fromCode(statusCode);
         if (status == null) {
             throw new SmsReportException("error.sms_unknown_status");
@@ -146,12 +140,11 @@ public class LsimSmsService {
             if (unicode) {
                 if (text.length() <= 70) maxChars = 70;
                 else if (text.length() <= 134) maxChars = 134;
-                    // ... add more segments if your logic supports splitting
-                else maxChars = 603; // 9 segments
+                else maxChars = 603;
             } else {
                 if (text.length() <= 160) maxChars = 160;
                 else if (text.length() <= 306) maxChars = 306;
-                else maxChars = 1377; // 9 segments
+                else maxChars = 1377;
             }
             return text.length() <= maxChars;
         }

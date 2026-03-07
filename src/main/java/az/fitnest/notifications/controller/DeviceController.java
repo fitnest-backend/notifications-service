@@ -39,9 +39,6 @@ public class DeviceController {
 
         Device.Platform platform = DeviceDetector.detectPlatform();
         if (platform == null) {
-            // Defaulting to ANDROID or returning error? 
-            // Most clients use Android/iOS strings. Defaulting to ANDROID for now or just letting it be null if DB allows?
-            // DB has nullable=false. Let's default to ANDROID if undetected but logged.
             platform = Device.Platform.ANDROID;
         }
 

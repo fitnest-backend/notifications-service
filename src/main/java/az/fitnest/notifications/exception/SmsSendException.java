@@ -17,5 +17,4 @@ public class SmsSendException extends LsimSmsException {
         super(message, errorCode, cause);
     }
 
-
 }

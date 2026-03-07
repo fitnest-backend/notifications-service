@@ -1,8 +1,5 @@
 package az.fitnest.notifications.exception;
 
-/**
- * Thrown when the SMS message length exceeds allowed limits.
- */
 public class SmsLengthExceededException extends LsimSmsException {
 
     private final int actualLength;

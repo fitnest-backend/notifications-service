@@ -23,9 +23,7 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             String to = request.getTo();
             String message = request.getMessage();
 
-
             Long transactionId = lsimSmsService.sendSms(to, message);
-
 
             SendSMSResponse response = SendSMSResponse.newBuilder()
                     .setSuccess(true)
@@ -54,9 +52,7 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             String templateName = request.getTemplateName();
             Map<String, String> variables = request.getVariablesMap();
 
-
             emailService.sendHtmlEmail(to, subject, templateName, new HashMap<>(variables));
-
 
             SendEmailResponse response = SendEmailResponse.newBuilder()
                     .setSuccess(true)
@@ -84,9 +80,7 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             String subject = request.getSubject();
             String body = request.getBody();
 
-
             emailService.sendSimpleEmail(to, subject, body);
-
 
             SendEmailResponse response = SendEmailResponse.newBuilder()
                     .setSuccess(true)
@@ -114,7 +108,6 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             String title = request.getTitle();
             String body = request.getBody();
             Map<String, String> data = request.getDataMap();
-
 
             az.fitnest.notifications.dto.PushResult result = notificationService.sendPushToUser(userId, title, body, data);
 
@@ -144,7 +137,6 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             Long userId = request.getUserId();
             int page = request.getPage() >= 0 ? request.getPage() : 0;
             int size = request.getSize() > 0 ? request.getSize() : 20;
-
 
             org.springframework.data.domain.Page<az.fitnest.notifications.dto.NotificationDto> notificationPage =
                     notificationService.getUserNotifications(userId, org.springframework.data.domain.PageRequest.of(page, size));

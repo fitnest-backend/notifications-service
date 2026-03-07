@@ -13,10 +13,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Locale;
 
-/**
- * Configuration to warm up OpenAPI documentation at startup.
- * This pre-generates the OpenAPI spec so the first request is fast.
- */
 @Configuration
 public class OpenApiWarmupConfig {
 
@@ -47,13 +43,11 @@ public class OpenApiWarmupConfig {
                     openApiResource.openapiJson(null, "", Locale.getDefault());
                     return;
                 } catch (Exception e) {
-                    // Fall back to HTTP
                 }
             }
 
             warmupViaHttp();
         } catch (Exception e) {
-            // Non-critical, don't fail startup
         }
     }
 
@@ -77,7 +71,6 @@ public class OpenApiWarmupConfig {
 
             connection.disconnect();
         } catch (Exception e) {
-            // Ignore warmup failures
         }
     }
 }

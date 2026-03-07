@@ -76,26 +76,22 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     public PushResult sendPushToUser(Long userId, String title, String body, Map<String, String> data) {
-        // Check if Firebase is available
         if (firebaseMessaging.isEmpty()) {
             logger.warn("Firebase is not initialized. Cannot send push notification to user: {}", userId);
             return PushResult.builder().notificationId(-1L).build();
         }
 
-        // Check if user has active sessions in identity-service
         try {
             String sessionStatus = identityGrpcClient.getUserSessionStatus(userId);
             if (!"HAVE_SESSIONS".equals(sessionStatus)) {
-                return PushResult.builder().notificationId(-1L).build(); // -1 or handle as needed
+                return PushResult.builder().notificationId(-1L).build();
             }
         } catch (Exception e) {
         }
 
-        // 1. Save Pending Notification in a transaction to guarantee it's recorded
         Notification notification = savePendingNotification(userId, title, body);
         Long notificationId = notification.getId();
 
-        // 2. Fetch device tokens
         List<String> tokens = deviceRepository.findPushTokensByUserId(userId);
         if (tokens.isEmpty()) {
             updateNotificationStatus(notificationId, NotificationStatus.FAILED, 0, 0, "No registered devices");
@@ -104,7 +100,6 @@ public class NotificationServiceImpl implements NotificationService {
 
         Map<String, String> payload = data != null ? data : Collections.emptyMap();
 
-        // 3. Build Multicast Message with Platform Specific Configs
         MulticastMessage message = MulticastMessage.builder()
                 .addAllTokens(tokens)
                 .setNotification(com.google.firebase.messaging.Notification.builder()
@@ -128,7 +123,6 @@ public class NotificationServiceImpl implements NotificationService {
                         .build())
                 .build();
 
-        // 4. Send the message via Firebase
         int sentCount = 0;
         int failedCount = 0;
         List<String> failedTokensToRemove = new ArrayList<>();
@@ -161,7 +155,6 @@ public class NotificationServiceImpl implements NotificationService {
             failureReason = e.getMessage();
         }
 
-        // 5. Cleanup stale tokens and update the DB status
         int removedTokens = failedTokensToRemove.size();
         cleanupTokensAndUpdateStatus(userId, notificationId, failedTokensToRemove, sentCount, failedCount, failureReason);
 
@@ -175,7 +168,6 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Transactional
     public void broadcastPushNotification(String title, String body) {
-        // Check if Firebase is available
         if (firebaseMessaging.isEmpty()) {
             logger.warn("Firebase is not initialized. Cannot send broadcast push notification.");
             return;
@@ -188,8 +180,6 @@ public class NotificationServiceImpl implements NotificationService {
 
         Map<String, String> payload = Collections.emptyMap();
 
-        // 1. Save notifications for each user who has a device registered
-        // This is necessary so they see the broadcast in their notification list/history
         List<Long> userIds = deviceRepository.findAll().stream()
                 .map(Device::getUserId)
                 .distinct()
@@ -199,7 +189,6 @@ public class NotificationServiceImpl implements NotificationService {
             savePendingNotification(userIdForNotification, title, body);
         }
 
-        // 2. Build Multicast Message
         MulticastMessage message = MulticastMessage.builder()
                 .addAllTokens(tokens)
                 .setNotification(com.google.firebase.messaging.Notification.builder()
@@ -274,7 +263,6 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     public void sendPushNotification(String token, String title, String body, Map<String, String> data) {
-        // Check if Firebase is available
         if (firebaseMessaging.isEmpty()) {
             logger.warn("Firebase is not initialized. Cannot send push notification to token: {}", maskToken(token));
             return;
@@ -305,10 +293,8 @@ public class NotificationServiceImpl implements NotificationService {
         Device device = deviceRepository.findById(deviceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cihaz tapılmadı"));
 
-        // 1. Save Notification record for in-app history (linked to user)
         savePendingNotification(device.getUserId(), title, body);
 
-        // 2. Send push to the specific registered device
         sendPushNotification(device.getPushToken(), title, body, Collections.emptyMap());
 
     }
@@ -318,7 +304,6 @@ public class NotificationServiceImpl implements NotificationService {
             return Page.empty(pageable);
         }
 
-        // Handle DTO field mapping for sorting (createdAt -> createdDate)
         Pageable finalPageable = pageable;
         if (pageable.getSort().isSorted()) {
             finalPageable = org.springframework.data.domain.PageRequest.of(
