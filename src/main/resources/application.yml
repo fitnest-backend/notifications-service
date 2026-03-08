@@ -29,6 +29,8 @@ spring:
     name: notifications-service
   main:
     lazy-initialization: ${SPRING_MAIN_LAZY_INITIALIZATION:true}
+  messages:
+    encoding: UTF-8
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgresql-notifications:5432/fitnest_notifications}
     username: ${SPRING_DATASOURCE_USERNAME:fitnest_notifications}
