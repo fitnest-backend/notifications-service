@@ -9,6 +9,7 @@ public record DeviceDto(
     Long deviceId,
     Long userId,
     String pushToken,
+    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "dd/MM/yyyy")
     LocalDateTime createdAt,
     Device.Platform platform
 ) {}

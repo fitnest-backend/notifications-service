@@ -9,5 +9,6 @@ public record NotificationDto(
     String title,
     String body,
     boolean isRead,
+    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "dd/MM/yyyy")
     LocalDateTime createdAt
 ) {}

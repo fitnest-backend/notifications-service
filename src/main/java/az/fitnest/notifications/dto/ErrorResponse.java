@@ -7,6 +7,7 @@ import lombok.Builder;
 public record ErrorResponse(
     String message,
     String code,
+    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "dd/MM/yyyy")
     LocalDateTime timestamp,
     String path
 ) {
