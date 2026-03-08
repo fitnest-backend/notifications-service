@@ -23,7 +23,7 @@ public class EmailServiceImpl implements EmailService {
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
 
-    @Value("${mail.from:no-reply@fitnest.az}")
+    @Value("${SPRING_MAIL_FROM:fitnestazerbaijan@gmail.com}")
     private String fromAddress;
 
     @Override
