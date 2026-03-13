@@ -28,12 +28,12 @@ public class KafkaConfig {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        
+
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "az.fitnest.notifications.messaging.NotificationEvent");
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
-        
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), 
+
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(),
                 new JsonDeserializer<>(NotificationEvent.class, false));
     }
 
