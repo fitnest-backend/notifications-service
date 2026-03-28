@@ -8,7 +8,7 @@ import az.fitnest.notifications.dto.LsimApiResponse;
 import az.fitnest.notifications.dto.LsimReportRequest;
 import az.fitnest.notifications.dto.LsimSendSmsRequest;
 import az.fitnest.notifications.dto.SmsStatus;
-import az.fitnest.notifications.util.LsimHashUtil;
+import org.springframework.web.util.UriComponentsBuilder;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.http.MediaType;
@@ -23,28 +23,34 @@ public class LsimSmsService {
 
     public Long sendSms(String msisdn, String text, String sender,
                         Boolean unicode, String scheduled) {
-        String key = LsimHashUtil.generateKey(
-                properties.getPassword(),
-                properties.getLogin(),
-                text,
-                msisdn,
-                sender
-        );
+        String key = DigestUtils.md5Hex(properties.getLogin() + properties.getPassword());
 
-        LsimSendSmsRequest request = LsimSendSmsRequest.builder()
-                .login(properties.getLogin())
-                .key(key)
-                .msisdn(msisdn)
-                .text(text)
-                .sender(sender)
-                .unicode(unicode != null ? unicode : properties.getDefaultUnicode())
-                .scheduled(scheduled != null ? scheduled : "NOW")
-                .build();
+        String normalizedMsisdn = msisdn.replaceAll("[^0-9]", "");
+        if (!normalizedMsisdn.startsWith("994")) {
+            throw new SmsSendException("Phone number must start with country code 994");
+        }
 
-        LsimApiResponse response = webClient.post()
-                .uri("/quicksms/v1/smssender")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
+        String encodedText = java.net.URLEncoder.encode(text, java.nio.charset.StandardCharsets.UTF_8);
+
+        boolean useUnicode = unicode != null ? unicode : properties.getDefaultUnicode();
+        boolean hasNonAscii = !text.chars().allMatch(c -> c < 128);
+        String unicodeParam = (useUnicode || hasNonAscii) ? "1" : null;
+
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromUriString(properties.getBaseUrl() + "/send")
+                .queryParam("login", properties.getLogin())
+                .queryParam("msisdn", normalizedMsisdn)
+                .queryParam("text", encodedText)
+                .queryParam("sender", sender)
+                .queryParam("key", key);
+        if (unicodeParam != null) {
+            builder.queryParam("unicode", "1");
+        }
+
+        String url = builder.toUriString();
+
+        LsimApiResponse response = webClient.get()
+                .uri(url)
                 .retrieve()
                 .bodyToMono(LsimApiResponse.class)
                 .block();
@@ -53,7 +59,18 @@ public class LsimSmsService {
             throw new SmsSendException("error.sms_empty_response");
         }
         if (response.errorCode() != null && response.errorCode() != 0) {
-            throw new SmsSendException("error.sms_send_failed");
+            if (response.errorCode() == -109) {
+                response = webClient.get()
+                        .uri(url)
+                        .retrieve()
+                        .bodyToMono(LsimApiResponse.class)
+                        .block();
+                if (response == null || (response.errorCode() != null && response.errorCode() != 0)) {
+                    throw new SmsSendException("error.sms_send_failed");
+                }
+            } else {
+                throw new SmsSendException("error.sms_send_failed");
+            }
         }
 
         return response.obj();
@@ -65,19 +82,14 @@ public class LsimSmsService {
     }
 
     public Integer checkBalance() {
-        String key = LsimHashUtil.generateBalanceKey(properties.getPassword(), properties.getLogin());
-
-        String url = "/quicksms/v1/balance?login={login}&key={key}";
+        String key = DigestUtils.md5Hex(properties.getLogin() + properties.getPassword());
+        String url = properties.getBaseUrl() + "/balance?login=" + properties.getLogin() + "&key=" + key;
         LsimApiResponse response = webClient.get()
-                .uri(url, properties.getLogin(), key)
+                .uri(url)
                 .retrieve()
                 .bodyToMono(LsimApiResponse.class)
                 .block();
-
         if (response == null || (response.errorCode() != null && response.errorCode() != 0)) {
-            String errorMsg = response != null ?
-                    String.format("LSIM error %d: %s", response.errorCode(), response.errorMessage()) :
-                    "no response";
             throw new SmsBalanceException("error.sms_balance_check_failed");
         }
         return response.obj() != null ? response.obj().intValue() : 0;
