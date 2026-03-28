@@ -23,14 +23,11 @@ public class LsimSmsService {
 
     public Long sendSms(String msisdn, String text, String sender,
                         Boolean unicode, String scheduled) {
-        // Log configuration values for debugging
         System.out.println("[SMS CONFIG] base-url: " + properties.getBaseUrl());
         System.out.println("[SMS CONFIG] login: " + properties.getLogin());
         System.out.println("[SMS CONFIG] default-sender: " + properties.getDefaultSender());
         String maskedPassword = properties.getPassword() == null ? null : properties.getPassword().replaceAll(".", "*");
         System.out.println("[SMS CONFIG] password: " + maskedPassword);
-
-        String key = DigestUtils.md5Hex(properties.getLogin() + properties.getPassword());
 
         String normalizedMsisdn = msisdn.replaceAll("[^0-9]", "");
         if (!normalizedMsisdn.startsWith("994")) {
@@ -38,10 +35,12 @@ public class LsimSmsService {
         }
 
         String textParam = text;
+        String md5Password = DigestUtils.md5Hex(properties.getPassword());
+        String key = DigestUtils.md5Hex(md5Password + properties.getLogin() + textParam + normalizedMsisdn + sender);
 
         boolean useUnicode = unicode != null ? unicode : properties.getDefaultUnicode();
         boolean hasNonAscii = !text.chars().allMatch(c -> c < 128);
-        String unicodeParam = (useUnicode || hasNonAscii) ? "1" : null;
+        boolean unicodeFlag = useUnicode || hasNonAscii;
 
         String baseUrl = properties.getBaseUrl();
         if (baseUrl.endsWith("/")) baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
@@ -53,10 +52,8 @@ public class LsimSmsService {
                 .queryParam("msisdn", normalizedMsisdn)
                 .queryParam("text", textParam)
                 .queryParam("sender", sender)
-                .queryParam("key", key);
-        if (unicodeParam != null) {
-            builder.queryParam("unicode", "1");
-        }
+                .queryParam("key", key)
+                .queryParam("unicode", unicodeFlag);
 
         String url = builder.toUriString();
 
@@ -101,7 +98,8 @@ public class LsimSmsService {
     }
 
     public Integer checkBalance() {
-        String key = DigestUtils.md5Hex(properties.getLogin() + properties.getPassword());
+        String md5Password = DigestUtils.md5Hex(properties.getPassword());
+        String key = DigestUtils.md5Hex(md5Password + properties.getLogin());
         String url = properties.getBaseUrl() + "/balance?login=" + properties.getLogin() + "&key=" + key;
         LsimApiResponse response = webClient.get()
                 .uri(url)
