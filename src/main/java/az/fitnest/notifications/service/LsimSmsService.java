@@ -30,7 +30,7 @@ public class LsimSmsService {
             throw new SmsSendException("Phone number must start with country code 994");
         }
 
-        String encodedText = java.net.URLEncoder.encode(text, java.nio.charset.StandardCharsets.UTF_8);
+        String textParam = text;
 
         boolean useUnicode = unicode != null ? unicode : properties.getDefaultUnicode();
         boolean hasNonAscii = !text.chars().allMatch(c -> c < 128);
@@ -44,7 +44,7 @@ public class LsimSmsService {
                 .fromUriString(urlBase)
                 .queryParam("login", properties.getLogin())
                 .queryParam("msisdn", normalizedMsisdn)
-                .queryParam("text", encodedText)
+                .queryParam("text", textParam)
                 .queryParam("sender", sender)
                 .queryParam("key", key);
         if (unicodeParam != null) {
