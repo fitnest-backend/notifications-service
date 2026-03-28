@@ -36,8 +36,12 @@ public class LsimSmsService {
         boolean hasNonAscii = !text.chars().allMatch(c -> c < 128);
         String unicodeParam = (useUnicode || hasNonAscii) ? "1" : null;
 
+        String baseUrl = properties.getBaseUrl();
+        if (baseUrl.endsWith("/")) baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        String urlBase = baseUrl + "/send";
+
         UriComponentsBuilder builder = UriComponentsBuilder
-                .fromUriString(properties.getBaseUrl() + "/send")
+                .fromUriString(urlBase)
                 .queryParam("login", properties.getLogin())
                 .queryParam("msisdn", normalizedMsisdn)
                 .queryParam("text", encodedText)
@@ -49,11 +53,19 @@ public class LsimSmsService {
 
         String url = builder.toUriString();
 
-        LsimApiResponse response = webClient.get()
-                .uri(url)
-                .retrieve()
-                .bodyToMono(LsimApiResponse.class)
-                .block();
+        System.out.println("[SMS DEBUG] Sending SMS request: " + url.replace(key, "[KEY]") + " (sender: " + sender + ")");
+
+        LsimApiResponse response;
+        try {
+            response = webClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .bodyToMono(LsimApiResponse.class)
+                    .block();
+        } catch (org.springframework.web.reactive.function.client.WebClientResponseException.Forbidden e) {
+            System.err.println("[SMS ERROR] 403 Forbidden from sendsms.az. Check IP whitelisting, credentials, and sender name.");
+            throw new SmsSendException("403 Forbidden from SMS provider. Check IP whitelisting, credentials, and sender name.");
+        }
 
         if (response == null) {
             throw new SmsSendException("error.sms_empty_response");
