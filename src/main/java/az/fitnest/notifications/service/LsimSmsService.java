@@ -23,6 +23,13 @@ public class LsimSmsService {
 
     public Long sendSms(String msisdn, String text, String sender,
                         Boolean unicode, String scheduled) {
+        // Log configuration values for debugging
+        System.out.println("[SMS CONFIG] base-url: " + properties.getBaseUrl());
+        System.out.println("[SMS CONFIG] login: " + properties.getLogin());
+        System.out.println("[SMS CONFIG] default-sender: " + properties.getDefaultSender());
+        String maskedPassword = properties.getPassword() == null ? null : properties.getPassword().replaceAll(".", "*");
+        System.out.println("[SMS CONFIG] password: " + maskedPassword);
+
         String key = DigestUtils.md5Hex(properties.getLogin() + properties.getPassword());
 
         String normalizedMsisdn = msisdn.replaceAll("[^0-9]", "");
