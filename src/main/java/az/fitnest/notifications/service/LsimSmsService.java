@@ -75,6 +75,7 @@ public class LsimSmsService {
             throw new SmsSendException("error.sms_empty_response");
         }
         if (response.errorCode() != null && response.errorCode() != 0) {
+            System.err.println("[SMS ERROR] Provider returned error code: " + response.errorCode() + ", successMessage: " + response.successMessage() + ", errorMessage: " + response.errorMessage());
             if (response.errorCode() == -109) {
                 response = webClient.get()
                         .uri(url)
@@ -82,6 +83,7 @@ public class LsimSmsService {
                         .bodyToMono(LsimApiResponse.class)
                         .block();
                 if (response == null || (response.errorCode() != null && response.errorCode() != 0)) {
+                    System.err.println("[SMS ERROR] Retry also failed. Error code: " + (response != null ? response.errorCode() : "null") + ", successMessage: " + (response != null ? response.successMessage() : "null") + ", errorMessage: " + (response != null ? response.errorMessage() : "null"));
                     throw new SmsSendException("error.sms_send_failed");
                 }
             } else {
