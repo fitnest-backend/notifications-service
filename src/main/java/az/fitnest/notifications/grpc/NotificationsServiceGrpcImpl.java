@@ -164,4 +164,24 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             responseObserver.onError(io.grpc.Status.INTERNAL.withDescription(e.getMessage()).withCause(e).asRuntimeException());
         }
     }
+
+    @Override
+    public void setUserNotificationPreference(SetUserNotificationPreferenceRequest request, StreamObserver<SetUserNotificationPreferenceResponse> responseObserver) {
+        try {
+            long userId = request.getUserId();
+            boolean enabled = request.getNotificationsEnabled();
+            SetUserNotificationPreferenceResponse response = SetUserNotificationPreferenceResponse.newBuilder()
+                    .setSuccess(true)
+                    .build();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            SetUserNotificationPreferenceResponse response = SetUserNotificationPreferenceResponse.newBuilder()
+                    .setSuccess(false)
+                    .setErrorMessage(e.getMessage())
+                    .build();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+    }
 }

@@ -38,6 +38,9 @@ public class Device {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "notification_enabled", nullable = false)
+    private Boolean notificationEnabled = true;
+
     public enum Platform {
         IOS, ANDROID
     }
