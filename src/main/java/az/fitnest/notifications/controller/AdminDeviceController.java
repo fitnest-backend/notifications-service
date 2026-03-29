@@ -36,6 +36,7 @@ public class AdminDeviceController {
                         .pushToken(device.getPushToken())
                         .platform(device.getPlatform())
                         .createdAt(device.getCreatedAt())
+                        .notificationsEnabled(device.getNotificationEnabled())
                         .build())
                 .collect(Collectors.toList());
         return ResponseEntity.ok(devices);
@@ -52,6 +53,7 @@ public class AdminDeviceController {
                         .pushToken(device.getPushToken())
                         .platform(device.getPlatform())
                         .createdAt(device.getCreatedAt())
+                        .notificationsEnabled(device.getNotificationEnabled())
                         .build())
                 .collect(Collectors.toList());
         return ResponseEntity.ok(devices);
@@ -89,4 +91,3 @@ public class AdminDeviceController {
         return ResponseEntity.noContent().build();
     }
 }
-

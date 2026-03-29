@@ -11,5 +11,6 @@ public record DeviceDto(
     String pushToken,
     @com.fasterxml.jackson.annotation.JsonFormat(pattern = "dd/MM/yyyy")
     LocalDateTime createdAt,
-    Device.Platform platform
+    Device.Platform platform,
+    Boolean notificationsEnabled
 ) {}

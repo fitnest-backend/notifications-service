@@ -56,6 +56,7 @@ public class DeviceController {
                         .pushToken(device.getPushToken())
                         .platform(device.getPlatform())
                         .createdAt(device.getCreatedAt())
+                        .notificationsEnabled(device.getNotificationEnabled())
                         .build())
                 .collect(Collectors.toList());
         return ResponseEntity.ok(devices);
