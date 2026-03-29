@@ -351,6 +351,10 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.deleteAllByUserId(userId);
     }
 
+    public List<Device> getDevicesByUserId(Long userId) {
+        return deviceRepository.findAllByUserId(userId);
+    }
+
     private String maskToken(String token) {
         if (token == null || token.length() <= 8) {
             return "***";

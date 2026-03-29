@@ -184,4 +184,29 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             responseObserver.onCompleted();
         }
     }
+
+    @Override
+    public void getDevicesByUserId(GetDevicesByUserIdRequest request, StreamObserver<GetDevicesByUserIdResponse> responseObserver) {
+        try {
+            Long userId = request.getUserId();
+            java.util.List<az.fitnest.notifications.model.entity.Device> devices = notificationService.getDevicesByUserId(userId);
+            java.util.List<Device> grpcDevices = devices.stream()
+                .map(device -> Device.newBuilder()
+                    .setDeviceId(device.getDeviceId() != null ? device.getDeviceId() : 0)
+                    .setUserId(device.getUserId() != null ? device.getUserId() : 0)
+                    .setPushToken(device.getPushToken() != null ? device.getPushToken() : "")
+                    .setPlatform(device.getPlatform() != null ? device.getPlatform().name() : "")
+                    .setCreatedAt(device.getCreatedAt() != null ? device.getCreatedAt().toString() : "")
+                    .setNotificationsEnabled(device.getNotificationEnabled() != null ? device.getNotificationEnabled() : true)
+                    .build())
+                .collect(java.util.stream.Collectors.toList());
+            GetDevicesByUserIdResponse response = GetDevicesByUserIdResponse.newBuilder()
+                .addAllDevices(grpcDevices)
+                .build();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            responseObserver.onError(io.grpc.Status.INTERNAL.withDescription(e.getMessage()).withCause(e).asRuntimeException());
+        }
+    }
 }
