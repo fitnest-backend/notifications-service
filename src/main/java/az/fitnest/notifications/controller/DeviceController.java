@@ -46,25 +46,8 @@ public class DeviceController {
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "Bütün cihazları əldə edin (Admin)", description = "Sistemdə qeydiyyatdan keçmiş bütün cihazların siyahısını qaytarır. Admin rolu tələb olunur.")
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<DeviceDto>> getAllDevices() {
-        List<DeviceDto> devices = deviceRepository.findAll().stream()
-                .map(device -> DeviceDto.builder()
-                        .deviceId(device.getDeviceId())
-                        .userId(device.getUserId())
-                        .pushToken(device.getPushToken())
-                        .platform(device.getPlatform())
-                        .createdAt(device.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(devices);
-    }
-
-    @Operation(summary = "İstifadəçinin cihazlarını əldə edin", description = "Verilmiş istifadəçi ID-sinə aid olan bütün cihazları qaytarır. Admin rolu tələb olunur.")
+    @Operation(summary = "İstifadəçinin cihazlarını əldə edin", description = "Verilmiş istifadəçi ID-sinə aid olan bütün cihazları qaytarır.")
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<DeviceDto>> getDevicesByUserId(@PathVariable Long userId) {
         List<DeviceDto> devices = deviceRepository.findAllByUserId(userId).stream()
                 .map(device -> DeviceDto.builder()
@@ -78,35 +61,10 @@ public class DeviceController {
         return ResponseEntity.ok(devices);
     }
 
-    @Operation(summary = "Cihaza push bildirişi göndərin (Admin)", description = "Xüsusi cihaza push bildirişi göndərir. Admin rolu tələb olunur.")
+    @Operation(summary = "Cihaza push bildirişi göndərin", description = "Xüsusi cihaza push bildirişi göndərir.")
     @PostMapping("/send")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> sendPushToDevice(@Valid @RequestBody DirectPushRequest request) {
         notificationService.sendToDevice(request.deviceId(), request.title(), request.body());
         return ResponseEntity.ok().build();
-    }
-
-    @Operation(summary = "Bütün cihazları sil (Admin)", description = "Sistemdəki bütün cihazları silir. Admin rolu tələb olunur.")
-    @DeleteMapping("/admin/devices")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteAllDevices() {
-        deviceRepository.deleteAll();
-        return ResponseEntity.noContent().build();
-    }
-
-    @Operation(summary = "İstifadəçinin bütün cihazlarını sil (Admin)", description = "Verilmiş istifadəçi ID-sinə aid bütün cihazları silir. Admin rolu tələb olunur.")
-    @DeleteMapping("/admin/devices/user/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteDevicesByUserId(@PathVariable Long userId) {
-        deviceRepository.deleteByUserId(userId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @Operation(summary = "Cihazı sil (Admin)", description = "Verilmiş deviceId ilə cihazı silir. Admin rolu tələb olunur.")
-    @DeleteMapping("/admin/devices/{deviceId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteDeviceById(@PathVariable Long deviceId) {
-        deviceRepository.deleteById(deviceId);
-        return ResponseEntity.noContent().build();
     }
 }
