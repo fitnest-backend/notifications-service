@@ -85,4 +85,28 @@ public class DeviceController {
         notificationService.sendToDevice(request.deviceId(), request.title(), request.body());
         return ResponseEntity.ok().build();
     }
+
+    @Operation(summary = "Bütün cihazları sil (Admin)", description = "Sistemdəki bütün cihazları silir. Admin rolu tələb olunur.")
+    @DeleteMapping("/admin/devices")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteAllDevices() {
+        deviceRepository.deleteAll();
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "İstifadəçinin bütün cihazlarını sil (Admin)", description = "Verilmiş istifadəçi ID-sinə aid bütün cihazları silir. Admin rolu tələb olunur.")
+    @DeleteMapping("/admin/devices/user/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteDevicesByUserId(@PathVariable Long userId) {
+        deviceRepository.deleteByUserId(userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Cihazı sil (Admin)", description = "Verilmiş deviceId ilə cihazı silir. Admin rolu tələb olunur.")
+    @DeleteMapping("/admin/devices/{deviceId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteDeviceById(@PathVariable Long deviceId) {
+        deviceRepository.deleteById(deviceId);
+        return ResponseEntity.noContent().build();
+    }
 }

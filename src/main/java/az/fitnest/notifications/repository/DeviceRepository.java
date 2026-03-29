@@ -23,5 +23,7 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
 
     void deleteByPushToken(String pushToken);
 
+    void deleteByUserId(Long userId);
+
     long countByUserId(Long userId);
 }
