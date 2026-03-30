@@ -5,6 +5,8 @@ import az.fitnest.notifications.service.LsimSmsService;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import net.devh.boot.grpc.server.service.GrpcService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +14,7 @@ import java.util.Map;
 @GrpcService
 @RequiredArgsConstructor
 public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.NotificationsServiceImplBase {
+    private static final Logger logger = LoggerFactory.getLogger(NotificationsServiceGrpcImpl.class);
 
     private final LsimSmsService lsimSmsService;
     private final EmailService emailService;
@@ -171,11 +174,14 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
             long userId = request.getUserId();
             boolean enabled = request.getNotificationsEnabled();
             java.util.List<az.fitnest.notifications.model.entity.Device> devices = notificationService.getDevicesByUserId(userId);
+            logger.info("[setUserNotificationPreference] userId={}, requested notificationsEnabled={}, devices={}", userId, enabled, devices.stream().map(d -> String.format("{id=%d, isCurrent=%s, notificationsEnabled=%s}", d.getDeviceId(), d.getIsCurrent(), d.getNotificationEnabled())).toList());
             boolean updated = false;
             for (az.fitnest.notifications.model.entity.Device device : devices) {
                 if (Boolean.TRUE.equals(device.getIsCurrent())) {
+                    logger.info("[setUserNotificationPreference] Updating deviceId={} (was notificationsEnabled={})", device.getDeviceId(), device.getNotificationEnabled());
                     device.setNotificationEnabled(enabled);
                     notificationService.saveDevice(device);
+                    logger.info("[setUserNotificationPreference] Updated deviceId={} (now notificationsEnabled={})", device.getDeviceId(), device.getNotificationEnabled());
                     updated = true;
                 }
             }
@@ -208,6 +214,7 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
                     .setPlatform(device.getPlatform() != null ? device.getPlatform().name() : "")
                     .setCreatedAt(device.getCreatedAt() != null ? device.getCreatedAt().toString() : "")
                     .setNotificationsEnabled(device.getNotificationEnabled() != null ? device.getNotificationEnabled() : true)
+                    .setIsCurrent(device.getIsCurrent() != null ? device.getIsCurrent() : false)
                     .build())
                 .collect(java.util.stream.Collectors.toList());
             GetDevicesByUserIdResponse response = GetDevicesByUserIdResponse.newBuilder()
