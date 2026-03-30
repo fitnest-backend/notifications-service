@@ -61,11 +61,8 @@ public class NotificationServiceImpl implements NotificationService {
         }
         List<Device> userDevices = deviceRepository.findAllByUserId(userId);
         for (Device d : userDevices) {
-            if (!pushToken.equals(d.getPushToken())) {
-                d.setIsCurrent(false);
-                d.setNotificationEnabled(false);
-                deviceRepository.save(d);
-            }
+            d.setIsCurrent(false);
+            deviceRepository.save(d);
         }
         try {
             deviceRepository.findByPushToken(pushToken)
