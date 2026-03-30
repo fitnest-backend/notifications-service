@@ -81,7 +81,7 @@ public class NotificationServiceImpl implements NotificationService {
                                 device.setPlatform(platform);
                                 device.setCreatedAt(LocalDateTime.now());
                                 device.setIsCurrent(true);
-                                device.setNotificationEnabled(true);
+                                device.setNotificationEnabled(false);
                                 deviceRepository.save(device);
                             }
                     );
