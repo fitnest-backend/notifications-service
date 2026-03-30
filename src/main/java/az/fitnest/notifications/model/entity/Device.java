@@ -1,5 +1,6 @@
 package az.fitnest.notifications.model.entity;
 
+import az.fitnest.notifications.model.enums.Platform;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -41,7 +42,6 @@ public class Device {
     @Column(name = "notification_enabled", nullable = false)
     private Boolean notificationEnabled = true;
 
-    public enum Platform {
-        IOS, ANDROID
-    }
+    @Column(name = "is_current", nullable = false)
+    private Boolean isCurrent = false;
 }

@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import az.fitnest.notifications.exception.ResourceNotFoundException;
+import az.fitnest.notifications.model.enums.Platform;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -53,13 +55,26 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Transactional
-    public void registerDevice(Long userId, String pushToken, Device.Platform platform) {
+    public void registerDevice(Long userId, String pushToken, Platform platform) {
+        if (platform == null) {
+            throw new IllegalArgumentException("Platform must be specified and valid");
+        }
+        List<Device> userDevices = deviceRepository.findAllByUserId(userId);
+        for (Device d : userDevices) {
+            if (!pushToken.equals(d.getPushToken())) {
+                d.setIsCurrent(false);
+                d.setNotificationEnabled(false);
+                deviceRepository.save(d);
+            }
+        }
         try {
             deviceRepository.findByPushToken(pushToken)
                     .ifPresentOrElse(
                             device -> {
                                 device.setUserId(userId);
                                 device.setPlatform(platform);
+                                device.setIsCurrent(true);
+                                device.setNotificationEnabled(true);
                                 deviceRepository.save(device);
                             },
                             () -> {
@@ -68,6 +83,8 @@ public class NotificationServiceImpl implements NotificationService {
                                 device.setPushToken(pushToken);
                                 device.setPlatform(platform);
                                 device.setCreatedAt(LocalDateTime.now());
+                                device.setIsCurrent(true);
+                                device.setNotificationEnabled(true);
                                 deviceRepository.save(device);
                             }
                     );

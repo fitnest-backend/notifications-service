@@ -7,6 +7,7 @@ import az.fitnest.notifications.repository.DeviceRepository;
 import az.fitnest.notifications.service.NotificationService;
 import az.fitnest.notifications.util.DeviceDetector;
 import az.fitnest.notifications.model.entity.Device;
+import az.fitnest.notifications.model.enums.Platform;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -37,9 +38,9 @@ public class DeviceController {
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody DeviceRegistrationRequest request) {
 
-        Device.Platform platform = DeviceDetector.detectPlatform();
+        Platform platform = DeviceDetector.detectPlatform();
         if (platform == null) {
-            platform = Device.Platform.ANDROID;
+            platform = Platform.ANDROID;
         }
 
         notificationService.registerDevice(userId, request.pushToken(), platform);

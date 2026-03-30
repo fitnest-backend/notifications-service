@@ -1,13 +1,14 @@
 package az.fitnest.notifications.util;
 
 import az.fitnest.notifications.model.entity.Device;
+import az.fitnest.notifications.model.enums.Platform;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 public class DeviceDetector {
 
-    public static Device.Platform detectPlatform() {
+    public static Platform detectPlatform() {
         HttpServletRequest request = getCurrentRequest();
         if (request == null) {
             return null;
@@ -20,9 +21,9 @@ public class DeviceDetector {
 
         String ua = userAgent.toLowerCase();
         if (ua.contains("android")) {
-            return Device.Platform.ANDROID;
+            return Platform.ANDROID;
         } else if (ua.contains("iphone") || ua.contains("ipad") || ua.contains("ios")) {
-            return Device.Platform.IOS;
+            return Platform.IOS;
         }
 
         return null;

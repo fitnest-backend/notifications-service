@@ -1,6 +1,7 @@
 package az.fitnest.notifications.dto;
 
 import az.fitnest.notifications.model.entity.Device;
+import az.fitnest.notifications.model.enums.Platform;
 import java.time.LocalDateTime;
 import lombok.Builder;
 
@@ -11,6 +12,6 @@ public record DeviceDto(
     String pushToken,
     @com.fasterxml.jackson.annotation.JsonFormat(pattern = "dd/MM/yyyy")
     LocalDateTime createdAt,
-    Device.Platform platform,
+    Platform platform,
     Boolean notificationsEnabled
 ) {}
