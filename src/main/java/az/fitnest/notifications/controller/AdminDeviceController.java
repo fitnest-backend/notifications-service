@@ -37,6 +37,7 @@ public class AdminDeviceController {
                         .platform(device.getPlatform())
                         .createdAt(device.getCreatedAt())
                         .notificationsEnabled(device.getNotificationEnabled())
+                        .isCurrent(device.getIsCurrent())
                         .build())
                 .collect(Collectors.toList());
         return ResponseEntity.ok(devices);
@@ -54,6 +55,7 @@ public class AdminDeviceController {
                         .platform(device.getPlatform())
                         .createdAt(device.getCreatedAt())
                         .notificationsEnabled(device.getNotificationEnabled())
+                        .isCurrent(device.getIsCurrent())
                         .build())
                 .collect(Collectors.toList());
         return ResponseEntity.ok(devices);

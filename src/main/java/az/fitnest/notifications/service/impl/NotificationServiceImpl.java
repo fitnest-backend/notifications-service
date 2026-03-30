@@ -59,7 +59,6 @@ public class NotificationServiceImpl implements NotificationService {
         if (platform == null) {
             throw new IllegalArgumentException("Platform must be specified and valid");
         }
-        // Bulk update: set all user's devices to isCurrent = false
         List<Device> userDevices = deviceRepository.findAllByUserId(userId);
         for (Device d : userDevices) {
             if (Boolean.TRUE.equals(d.getIsCurrent())) {
@@ -91,7 +90,6 @@ public class NotificationServiceImpl implements NotificationService {
         } catch (DataIntegrityViolationException e) {
             logger.error("Device registration failed for user {}: {}", userId, e.getMessage());
         }
-        // Log verification: ensure only one device is current
         List<Device> afterDevices = deviceRepository.findAllByUserId(userId);
         long currentCount = afterDevices.stream().filter(Device::getIsCurrent).count();
         if (currentCount != 1) {
