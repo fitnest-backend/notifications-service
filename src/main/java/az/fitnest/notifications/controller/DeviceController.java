@@ -51,14 +51,7 @@ public class DeviceController {
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<DeviceDto>> getDevicesByUserId(@PathVariable Long userId) {
         List<DeviceDto> devices = deviceRepository.findAllByUserId(userId).stream()
-                .map(device -> DeviceDto.builder()
-                        .deviceId(device.getDeviceId())
-                        .userId(device.getUserId())
-                        .pushToken(device.getPushToken())
-                        .platform(device.getPlatform())
-                        .createdAt(device.getCreatedAt())
-                        .notificationsEnabled(device.getNotificationEnabled())
-                        .build())
+                .map(az.fitnest.notifications.mapper.DeviceMapper::toDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(devices);
     }
