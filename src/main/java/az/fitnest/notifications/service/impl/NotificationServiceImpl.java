@@ -378,4 +378,9 @@ public class NotificationServiceImpl implements NotificationService {
         }
         return token.substring(0, 4) + "***" + token.substring(token.length() - 4);
     }
+
+    @Override
+    public void saveDevice(Device device) {
+        deviceRepository.save(device);
+    }
 }

@@ -170,8 +170,18 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
         try {
             long userId = request.getUserId();
             boolean enabled = request.getNotificationsEnabled();
+            java.util.List<az.fitnest.notifications.model.entity.Device> devices = notificationService.getDevicesByUserId(userId);
+            boolean updated = false;
+            for (az.fitnest.notifications.model.entity.Device device : devices) {
+                if (Boolean.TRUE.equals(device.getIsCurrent())) {
+                    device.setNotificationEnabled(enabled);
+                    notificationService.saveDevice(device);
+                    updated = true;
+                }
+            }
             SetUserNotificationPreferenceResponse response = SetUserNotificationPreferenceResponse.newBuilder()
-                    .setSuccess(true)
+                    .setSuccess(updated)
+                    .setErrorMessage(updated ? "" : "No current device found for user")
                     .build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();

@@ -35,4 +35,6 @@ public interface NotificationService {
     void deleteAllNotifications(Long userId);
 
     java.util.List<Device> getDevicesByUserId(Long userId);
+
+    void saveDevice(Device device);
 }
