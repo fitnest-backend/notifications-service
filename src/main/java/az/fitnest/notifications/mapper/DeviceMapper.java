@@ -17,6 +17,7 @@ public final class DeviceMapper {
                 .createdAt(device.getCreatedAt())
                 .platform(device.getPlatform())
                 .notificationsEnabled(device.getNotificationEnabled())
+                .isCurrent(device.getIsCurrent())
                 .build();
     }
 }
