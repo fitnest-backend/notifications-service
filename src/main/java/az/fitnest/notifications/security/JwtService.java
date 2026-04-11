@@ -1,9 +1,7 @@
 package az.fitnest.notifications.security;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -45,12 +43,11 @@ public class JwtService {
     }
 
     private Claims parseClaims(String token) {
-        Jws<Claims> jws = Jwts.parserBuilder()
-                .setSigningKey(key)
+        return Jwts.parser()
+                .verifyWith(key)
                 .requireIssuer(issuer)
                 .build()
-                .parseClaimsJws(token);
-
-        return jws.getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }
