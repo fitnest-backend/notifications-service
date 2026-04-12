@@ -23,7 +23,7 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         OpenAPI openAPI = new OpenAPI()
                 .info(new Info()
-                        .title("Notifications Service API")
+                        .title("Notifications Backend API")
                         .version("1.0.0")
                         .description("Fitnest Notifications Service endpoints")
                         .contact(new Contact()

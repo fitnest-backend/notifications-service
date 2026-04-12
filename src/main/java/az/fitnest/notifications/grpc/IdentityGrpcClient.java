@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class IdentityGrpcClient {
 
-    @GrpcClient("identity-service")
+    @GrpcClient("identity-backend")
     private UserServiceGrpc.UserServiceBlockingStub userServiceBlockingStub;
 
     public String getUserSessionStatus(Long userId) {
