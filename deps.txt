@@ -2,7 +2,7 @@
 > Task :dependencies
 
 ------------------------------------------------------------
-Root project 'notifications-service'
+Root project 'notifications-backend'
 ------------------------------------------------------------
 
 compileClasspath - Compile classpath for source set 'main'.
@@ -732,7 +732,7 @@ compileClasspath - Compile classpath for source set 'main'.
 
 A web-based, searchable dependency report is available by adding the --scan option.
 
-[Incubating] Problems report is available at: file:///Users/aousganeh/Desktop/fitnest/code/notifications-service/build/reports/problems/problems-report.html
+[Incubating] Problems report is available at: file:///Users/aousganeh/Desktop/fitnest/code/notifications-backend/build/reports/problems/problems-report.html
 
 Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
 
