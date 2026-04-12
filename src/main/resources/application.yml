@@ -4,6 +4,8 @@ logging:
     az.fitnest: DEBUG
     org.springframework.kafka: DEBUG
     org.springframework.mail: DEBUG
+  file:
+    name: logs/notifications-backend.log   # ✅ Optional: update log file name
 
 server:
   port: 8080
@@ -26,7 +28,7 @@ spring:
     virtual:
       enabled: true
   application:
-    name: notifications-service
+    name: notifications-backend   # ✅ Changed from notifications-service
   main:
     lazy-initialization: ${SPRING_MAIN_LAZY_INITIALIZATION:true}
   messages:
@@ -138,18 +140,18 @@ jwt:
   secret: ${JWT_SECRET:your-jwt-secret-change-in-production}
   issuer: ${JWT_ISSUER:fitnest}
 
-# Service URLs
+# ✅ Updated service URLs
 iam:
   service:
-    url: ${IDENTITY_SERVICE_URL:http://identity-service:8080}
+    url: ${IDENTITY_SERVICE_URL:http://identity-backend:8080}
 
 user:
   service:
-    url: ${USER_SERVICE_URL:http://user-service:8080}
+    url: ${USER_SERVICE_URL:http://user-backend:8080}
 
 media:
   service:
-    url: ${STORAGE_SERVICE_URL:http://storage-service:8080}
+    url: ${STORAGE_SERVICE_URL:http://storage-backend:8080}
 
 app:
   security:
@@ -190,14 +192,13 @@ springdoc:
   default-produces-media-type: application/json
   writer-with-default-pretty-printer: false
 
-  # Lsim-sms
-
+# Lsim-sms
 lsim:
   sms:
     base-url: https://apps.lsim.az
     login: ${SMS_LOGIN:YOUR_LOGIN}
     password: ${SMS_PASSWORD:YOUR_PASSWORD}
-    default-sender: ${SMS_SENDER:YOUR_SENDER}  # will be supplied by provider
+    default-sender: ${SMS_SENDER:YOUR_SENDER}
     default-unicode: false
 
 grpc:
