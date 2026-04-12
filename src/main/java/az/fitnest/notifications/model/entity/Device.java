@@ -40,7 +40,7 @@ public class Device {
     private LocalDateTime createdAt;
 
     @Column(name = "notification_enabled", nullable = false)
-    private Boolean notificationEnabled = true;
+    private Boolean notificationEnabled = false;
 
     @Column(name = "is_current", nullable = false)
     private Boolean isCurrent = false;

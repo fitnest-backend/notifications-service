@@ -73,7 +73,7 @@ public class NotificationServiceImpl implements NotificationService {
                                 device.setUserId(userId);
                                 device.setPlatform(platform);
                                 device.setIsCurrent(true);
-                                device.setNotificationEnabled(true);
+                                device.setNotificationEnabled(false);
                                 deviceRepository.save(device);
                             },
                             () -> {

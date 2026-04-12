@@ -213,7 +213,7 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
                     .setPushToken(device.getPushToken() != null ? device.getPushToken() : "")
                     .setPlatform(device.getPlatform() != null ? device.getPlatform().name() : "")
                     .setCreatedAt(device.getCreatedAt() != null ? device.getCreatedAt().toString() : "")
-                    .setNotificationsEnabled(device.getNotificationEnabled() != null ? device.getNotificationEnabled() : true)
+                    .setNotificationsEnabled(device.getNotificationEnabled() != null ? device.getNotificationEnabled() : false)
                     .setIsCurrent(device.getIsCurrent() != null ? device.getIsCurrent() : false)
                     .build())
                 .collect(java.util.stream.Collectors.toList());
