@@ -13,6 +13,7 @@ import az.fitnest.notifications.model.enums.NotificationStatus;
 import az.fitnest.notifications.repository.DeviceRepository;
 import az.fitnest.notifications.repository.NotificationRepository;
 import az.fitnest.notifications.service.LsimSmsService;
+import az.fitnest.notifications.service.NotificationDeliveryLogService;
 import az.fitnest.notifications.service.NotificationService;
 import com.google.firebase.messaging.AndroidConfig;
 import com.google.firebase.messaging.AndroidNotification;
@@ -46,6 +47,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final LsimSmsService lsimSmsService;
     private final DeviceRepository deviceRepository;
     private final NotificationRepository notificationRepository;
+    private final NotificationDeliveryLogService notificationDeliveryLogService;
     private final Optional<FirebaseMessaging> firebaseMessaging;
     private final IdentityGrpcClient identityGrpcClient;
 
@@ -256,12 +258,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Transactional
     protected void updateNotificationStatus(Long notificationId, NotificationStatus status, int sentCount, int failedCount, String failureReason) {
-        notificationRepository.findById(notificationId).ifPresent(notification -> {
-            notification.setStatus(status);
-            notification.setSentCount(sentCount);
-            notification.setFailedCount(failedCount);
-            notification.setFailureReason(failureReason);
-        });
+        notificationDeliveryLogService.markResult(notificationId, status, sentCount, failedCount, failureReason);
     }
 
     @Transactional
