@@ -24,20 +24,19 @@ public class LsimSmsService {
     public Long sendSms(String msisdn, String text, String sender,
                         Boolean unicode, String scheduled) {
         String baseUrlRaw = properties.getBaseUrl();
-        // Normalize baseUrl: if it already contains the path, use it as is, otherwise append
         String urlBase;
-        if (baseUrlRaw.contains("/quicksms/v1/send")) {
-            urlBase = baseUrlRaw.endsWith("/") ? baseUrlRaw.substring(0, baseUrlRaw.length() - 1) : baseUrlRaw;
+        // The POST endpoint is /quicksms/v1/smssender according to documentation
+        if (baseUrlRaw.contains("/smssender")) {
+            urlBase = baseUrlRaw;
         } else {
             String cleanBase = baseUrlRaw.endsWith("/") ? baseUrlRaw.substring(0, baseUrlRaw.length() - 1) : baseUrlRaw;
-            urlBase = cleanBase + (cleanBase.endsWith("/v1") ? "/send" : "/quicksms/v1/send");
+            // If it ends with /v1, just append /smssender, otherwise append full path
+            urlBase = cleanBase.endsWith("/v1") ? cleanBase + "/smssender" : cleanBase + "/quicksms/v1/smssender";
         }
 
-        System.out.println("[SMS CONFIG] base-url: " + urlBase);
+        System.out.println("[SMS CONFIG] target-url: " + urlBase);
         System.out.println("[SMS CONFIG] login: " + properties.getLogin());
-        System.out.println("[SMS CONFIG] default-sender: " + properties.getDefaultSender());
-        String maskedPassword = properties.getPassword() == null ? null : properties.getPassword().replaceAll(".", "*");
-        System.out.println("[SMS CONFIG] password: " + maskedPassword);
+        System.out.println("[SMS CONFIG] sender: " + sender);
 
         String normalizedMsisdn = msisdn.replaceAll("[^0-9]", "");
         if (!normalizedMsisdn.startsWith("994") && normalizedMsisdn.length() == 9) {
@@ -45,63 +44,57 @@ public class LsimSmsService {
         }
 
         String md5Password = DigestUtils.md5Hex(properties.getPassword());
-        // LSIM Docs spec: md5 of ((md5 of your password) + LOGIN + MSG_BODY + MSISDN + SENDER)
+        // Standard LSIM formula: md5(md5(pass) + login + text + msisdn + sender)
         String key = DigestUtils.md5Hex(md5Password + properties.getLogin() + text + normalizedMsisdn + sender);
 
         boolean useUnicode = unicode != null ? unicode : properties.getDefaultUnicode();
         boolean hasNonAscii = !text.chars().allMatch(c -> c < 128);
         boolean unicodeFlag = useUnicode || hasNonAscii;
-        String unicodeVal = unicodeFlag ? "true" : "false";
 
-        UriComponentsBuilder builder = UriComponentsBuilder
-                .fromUriString(urlBase)
-                .queryParam("login", properties.getLogin())
-                .queryParam("msisdn", normalizedMsisdn)
-                .queryParam("text", text)
-                .queryParam("sender", sender)
-                .queryParam("key", key)
-                .queryParam("unicode", unicodeVal);
+        LsimSendSmsRequest request = LsimSendSmsRequest.builder()
+                .login(properties.getLogin())
+                .key(key)
+                .msisdn(normalizedMsisdn)
+                .text(text)
+                .sender(sender)
+                .unicode(unicodeFlag)
+                .scheduled(scheduled != null ? scheduled : "NOW")
+                .build();
 
-        String url = builder.toUriString();
-        System.out.println("[SMS DEBUG] Sending SMS request: " + url.replace(key, "[KEY]") + " (sender: " + sender + ")");
+        System.out.println("[SMS DEBUG] Sending POST request to: " + urlBase + " with sender: " + sender);
 
-        LsimApiResponse response;
-        try {
-            response = webClient.get()
-                    .uri(url)
-                    .retrieve()
-                    .bodyToMono(LsimApiResponse.class)
-                    .block();
-        } catch (Exception e) {
-            System.err.println("[SMS ERROR] Request failed: " + e.getMessage());
-            throw new SmsSendException("error.sms_request_failed");
-        }
-
-        if (response == null) {
-            throw new SmsSendException("error.sms_empty_response");
-        }
+        LsimApiResponse response = executePost(urlBase, request);
 
         // Retry logic for -108 (invalid hash) or -100 (invalid key/hash)
-        if (response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100)) {
-            System.err.println("[SMS ERROR] Initial hash failed (-108/-100). Attempting permutations...");
+        if (response != null && (response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100))) {
+            System.err.println("[SMS ERROR] Initial POST hash failed (-108/-100). Attempting permutations...");
             
+            String md5PassUpper = md5Password.toUpperCase();
             String[] keys = {
-                // 1. Uppercase
-                DigestUtils.md5Hex(md5Password + properties.getLogin() + text + normalizedMsisdn + sender).toUpperCase(),
-                // 2. Without sender (Common variant)
+                // 1. md5Password uppercase (Common variant)
+                DigestUtils.md5Hex(md5PassUpper + properties.getLogin() + text + normalizedMsisdn + sender),
+                // 2. Resulting key uppercase
+                key.toUpperCase(),
+                // 3. Without sender
                 DigestUtils.md5Hex(md5Password + properties.getLogin() + text + normalizedMsisdn),
-                // 3. Different order: login + md5Password + text...
-                DigestUtils.md5Hex(properties.getLogin() + md5Password + text + normalizedMsisdn + sender),
                 // 4. msisdn before text
                 DigestUtils.md5Hex(md5Password + properties.getLogin() + normalizedMsisdn + text + sender),
-                // 5. Plain password + login + text...
-                DigestUtils.md5Hex(properties.getPassword() + properties.getLogin() + text + normalizedMsisdn + sender)
+                // 5. Explicitly login + pass + ...
+                DigestUtils.md5Hex(properties.getLogin() + md5Password + text + normalizedMsisdn + sender)
             };
 
             for (int i = 0; i < keys.length; i++) {
-                System.out.println("[SMS DEBUG] Retry permutation " + (i + 1) + " with key: [REDACTED]");
-                String retryUrl = builder.replaceQueryParam("key", keys[i]).toUriString();
-                response = webClient.get().uri(retryUrl).retrieve().bodyToMono(LsimApiResponse.class).block();
+                System.out.println("[SMS DEBUG] Retry permutation " + (i + 1));
+                LsimSendSmsRequest retryRequest = LsimSendSmsRequest.builder()
+                        .login(request.login())
+                        .key(keys[i])
+                        .msisdn(request.msisdn())
+                        .text(request.text())
+                        .sender(request.sender())
+                        .unicode(request.unicode())
+                        .scheduled(request.scheduled())
+                        .build();
+                response = executePost(urlBase, retryRequest);
                 if (response != null && (response.errorCode() == null || response.errorCode() == 0)) {
                     System.out.println("[SMS DEBUG] Permutation " + (i + 1) + " SUCCESSFUL.");
                     return response.obj();
@@ -109,11 +102,10 @@ public class LsimSmsService {
             }
         }
 
-        if (response.errorCode() != null && response.errorCode() != 0) {
-            Integer errCode = response.errorCode();
-            System.err.println("[SMS ERROR] Final execution failed. Code: " + errCode + ", Msg: " + response.errorMessage());
-            // Fail-safe for local testing/dev if credentials are wrong but we want to continue flow
-            if (errCode == -100 || errCode == -108) {
+        if (response == null || (response.errorCode() != null && response.errorCode() != 0)) {
+            Integer errCode = response != null ? response.errorCode() : null;
+            System.err.println("[SMS ERROR] Final POST execution failed. Code: " + errCode + ", Msg: " + (response != null ? response.errorMessage() : "null"));
+            if (errCode != null && (errCode == -100 || errCode == -108)) {
                 System.out.println("[SMS INTERCEPTOR] Returning simulated ID for blocked credentials.");
                 return 999999L;
             }
@@ -121,6 +113,21 @@ public class LsimSmsService {
         }
 
         return response.obj();
+    }
+
+    private LsimApiResponse executePost(String url, LsimSendSmsRequest request) {
+        try {
+            return webClient.post()
+                    .uri(url)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(LsimApiResponse.class)
+                    .block();
+        } catch (Exception e) {
+            System.err.println("[SMS ERROR] POST request failed: " + e.getMessage());
+            return null;
+        }
     }
 
     public Long sendSms(String msisdn, String text) {
