@@ -78,17 +78,27 @@ public class LsimSmsService {
         }
         if (response.errorCode() != null && response.errorCode() != 0) {
             System.err.println("[SMS ERROR] Provider returned error code: " + response.errorCode() + ", successMessage: " + response.successMessage() + ", errorMessage: " + response.errorMessage());
-            if (response.errorCode() == -109) {
+            if (response.errorCode() == -108) {
+                System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 1 (login + msisdn + sender + text)");
+                String keyAlt1 = DigestUtils.md5Hex(md5Password + properties.getLogin() + normalizedMsisdn + sender + textParam);
+                String urlAlt1 = builder.replaceQueryParam("key", keyAlt1).toUriString();
+                response = webClient.get().uri(urlAlt1).retrieve().bodyToMono(LsimApiResponse.class).block();
+                if (response != null && response.errorCode() != null && response.errorCode() == -108) {
+                    System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 2 (login + msisdn + text + sender)");
+                    String keyAlt2 = DigestUtils.md5Hex(md5Password + properties.getLogin() + normalizedMsisdn + textParam + sender);
+                    String urlAlt2 = builder.replaceQueryParam("key", keyAlt2).toUriString();
+                    response = webClient.get().uri(urlAlt2).retrieve().bodyToMono(LsimApiResponse.class).block();
+                }
+            }
+            if (response != null && response.errorCode() != null && response.errorCode() == -109) {
                 response = webClient.get()
                         .uri(url)
                         .retrieve()
                         .bodyToMono(LsimApiResponse.class)
                         .block();
-                if (response == null || (response.errorCode() != null && response.errorCode() != 0)) {
-                    System.err.println("[SMS ERROR] Retry also failed. Error code: " + (response != null ? response.errorCode() : "null") + ", successMessage: " + (response != null ? response.successMessage() : "null") + ", errorMessage: " + (response != null ? response.errorMessage() : "null"));
-                    throw new SmsSendException("error.sms_send_failed");
-                }
-            } else {
+            }
+            if (response == null || (response.errorCode() != null && response.errorCode() != 0)) {
+                System.err.println("[SMS ERROR] Final SMS execution failed. Error code: " + (response != null ? response.errorCode() : "null") + ", errorMessage: " + (response != null ? response.errorMessage() : "null"));
                 throw new SmsSendException("error.sms_send_failed");
             }
         }
