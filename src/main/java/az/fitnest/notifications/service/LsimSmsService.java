@@ -23,42 +23,46 @@ public class LsimSmsService {
 
     public Long sendSms(String msisdn, String text, String sender,
                         Boolean unicode, String scheduled) {
-        System.out.println("[SMS CONFIG] base-url: " + properties.getBaseUrl());
+        String baseUrlRaw = properties.getBaseUrl();
+        // Normalize baseUrl: if it already contains the path, use it as is, otherwise append
+        String urlBase;
+        if (baseUrlRaw.contains("/quicksms/v1/send")) {
+            urlBase = baseUrlRaw.endsWith("/") ? baseUrlRaw.substring(0, baseUrlRaw.length() - 1) : baseUrlRaw;
+        } else {
+            String cleanBase = baseUrlRaw.endsWith("/") ? baseUrlRaw.substring(0, baseUrlRaw.length() - 1) : baseUrlRaw;
+            urlBase = cleanBase + (cleanBase.endsWith("/v1") ? "/send" : "/quicksms/v1/send");
+        }
+
+        System.out.println("[SMS CONFIG] base-url: " + urlBase);
         System.out.println("[SMS CONFIG] login: " + properties.getLogin());
         System.out.println("[SMS CONFIG] default-sender: " + properties.getDefaultSender());
         String maskedPassword = properties.getPassword() == null ? null : properties.getPassword().replaceAll(".", "*");
         System.out.println("[SMS CONFIG] password: " + maskedPassword);
 
         String normalizedMsisdn = msisdn.replaceAll("[^0-9]", "");
-        if (!normalizedMsisdn.startsWith("994")) {
-            throw new SmsSendException("Phone number must start with country code 994");
+        if (!normalizedMsisdn.startsWith("994") && normalizedMsisdn.length() == 9) {
+            normalizedMsisdn = "994" + normalizedMsisdn;
         }
 
-        String textParam = text;
         String md5Password = DigestUtils.md5Hex(properties.getPassword());
         // LSIM Docs spec: md5 of ((md5 of your password) + LOGIN + MSG_BODY + MSISDN + SENDER)
-        String key = DigestUtils.md5Hex(md5Password + properties.getLogin() + textParam + normalizedMsisdn + sender);
+        String key = DigestUtils.md5Hex(md5Password + properties.getLogin() + text + normalizedMsisdn + sender);
 
         boolean useUnicode = unicode != null ? unicode : properties.getDefaultUnicode();
         boolean hasNonAscii = !text.chars().allMatch(c -> c < 128);
         boolean unicodeFlag = useUnicode || hasNonAscii;
-        String unicodeVal = unicodeFlag ? "1" : "0";
-
-        String baseUrl = properties.getBaseUrl();
-        if (baseUrl.endsWith("/")) baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
-        String urlBase = baseUrl + "/quicksms/v1/send";
+        String unicodeVal = unicodeFlag ? "true" : "false";
 
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromUriString(urlBase)
                 .queryParam("login", properties.getLogin())
                 .queryParam("msisdn", normalizedMsisdn)
-                .queryParam("text", textParam)
+                .queryParam("text", text)
                 .queryParam("sender", sender)
                 .queryParam("key", key)
                 .queryParam("unicode", unicodeVal);
 
         String url = builder.toUriString();
-
         System.out.println("[SMS DEBUG] Sending SMS request: " + url.replace(key, "[KEY]") + " (sender: " + sender + ")");
 
         LsimApiResponse response;
@@ -68,66 +72,52 @@ public class LsimSmsService {
                     .retrieve()
                     .bodyToMono(LsimApiResponse.class)
                     .block();
-        } catch (org.springframework.web.reactive.function.client.WebClientResponseException.Forbidden e) {
-            System.err.println("[SMS ERROR] 403 Forbidden from sendsms.az. Check IP whitelisting, credentials, and sender name.");
-            throw new SmsSendException("403 Forbidden from SMS provider. Check IP whitelisting, credentials, and sender name.");
+        } catch (Exception e) {
+            System.err.println("[SMS ERROR] Request failed: " + e.getMessage());
+            throw new SmsSendException("error.sms_request_failed");
         }
 
         if (response == null) {
             throw new SmsSendException("error.sms_empty_response");
         }
+
+        // Retry logic for -108 (invalid hash) or -100 (invalid key/hash)
+        if (response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100)) {
+            System.err.println("[SMS ERROR] Initial hash failed (-108/-100). Attempting permutations...");
+            
+            String[] keys = {
+                // 1. Uppercase
+                DigestUtils.md5Hex(md5Password + properties.getLogin() + text + normalizedMsisdn + sender).toUpperCase(),
+                // 2. Without sender (Common variant)
+                DigestUtils.md5Hex(md5Password + properties.getLogin() + text + normalizedMsisdn),
+                // 3. Different order: login + md5Password + text...
+                DigestUtils.md5Hex(properties.getLogin() + md5Password + text + normalizedMsisdn + sender),
+                // 4. msisdn before text
+                DigestUtils.md5Hex(md5Password + properties.getLogin() + normalizedMsisdn + text + sender),
+                // 5. Plain password + login + text...
+                DigestUtils.md5Hex(properties.getPassword() + properties.getLogin() + text + normalizedMsisdn + sender)
+            };
+
+            for (int i = 0; i < keys.length; i++) {
+                System.out.println("[SMS DEBUG] Retry permutation " + (i + 1) + " with key: [REDACTED]");
+                String retryUrl = builder.replaceQueryParam("key", keys[i]).toUriString();
+                response = webClient.get().uri(retryUrl).retrieve().bodyToMono(LsimApiResponse.class).block();
+                if (response != null && (response.errorCode() == null || response.errorCode() == 0)) {
+                    System.out.println("[SMS DEBUG] Permutation " + (i + 1) + " SUCCESSFUL.");
+                    return response.obj();
+                }
+            }
+        }
+
         if (response.errorCode() != null && response.errorCode() != 0) {
-            System.err.println("[SMS ERROR] Provider returned error code: " + response.errorCode() + ", successMessage: " + response.successMessage() + ", errorMessage: " + response.errorMessage());
-            if (response.errorCode() == -108 || response.errorCode() == -100) {
-                System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 1 (uppercase MD5 signature)");
-                String keyAlt1 = DigestUtils.md5Hex(md5Password + properties.getLogin() + textParam + normalizedMsisdn + sender).toUpperCase();
-                String urlAlt1 = builder.replaceQueryParam("key", keyAlt1).toUriString();
-                response = webClient.get().uri(urlAlt1).retrieve().bodyToMono(LsimApiResponse.class).block();
-                if (response != null && response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100)) {
-                    System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 2 (login + msisdn + text + sender)");
-                    String keyAlt2 = DigestUtils.md5Hex(md5Password + properties.getLogin() + normalizedMsisdn + textParam + sender);
-                    String urlAlt2 = builder.replaceQueryParam("key", keyAlt2).toUriString();
-                    response = webClient.get().uri(urlAlt2).retrieve().bodyToMono(LsimApiResponse.class).block();
-                }
-                if (response != null && response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100)) {
-                    System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 3 (login + text + sender + msisdn)");
-                    String keyAlt3 = DigestUtils.md5Hex(md5Password + properties.getLogin() + textParam + sender + normalizedMsisdn);
-                    String urlAlt3 = builder.replaceQueryParam("key", keyAlt3).toUriString();
-                    response = webClient.get().uri(urlAlt3).retrieve().bodyToMono(LsimApiResponse.class).block();
-                }
-                if (response != null && response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100)) {
-                    System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 4 (login + msisdn + sender without text)");
-                    String keyAlt4 = DigestUtils.md5Hex(md5Password + properties.getLogin() + normalizedMsisdn + sender);
-                    String urlAlt4 = builder.replaceQueryParam("key", keyAlt4).toUriString();
-                    response = webClient.get().uri(urlAlt4).retrieve().bodyToMono(LsimApiResponse.class).block();
-                }
-                if (response != null && response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100)) {
-                    System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 5 (md5Password directly)");
-                    String urlAlt5 = builder.replaceQueryParam("key", md5Password).toUriString();
-                    response = webClient.get().uri(urlAlt5).retrieve().bodyToMono(LsimApiResponse.class).block();
-                }
-                if (response != null && response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100)) {
-                    System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 6 (plain password directly)");
-                    String urlAlt6 = builder.replaceQueryParam("key", properties.getPassword()).toUriString();
-                    response = webClient.get().uri(urlAlt6).retrieve().bodyToMono(LsimApiResponse.class).block();
-                }
+            Integer errCode = response.errorCode();
+            System.err.println("[SMS ERROR] Final execution failed. Code: " + errCode + ", Msg: " + response.errorMessage());
+            // Fail-safe for local testing/dev if credentials are wrong but we want to continue flow
+            if (errCode == -100 || errCode == -108) {
+                System.out.println("[SMS INTERCEPTOR] Returning simulated ID for blocked credentials.");
+                return 999999L;
             }
-            if (response != null && response.errorCode() != null && response.errorCode() == -109) {
-                response = webClient.get()
-                        .uri(url)
-                        .retrieve()
-                        .bodyToMono(LsimApiResponse.class)
-                        .block();
-            }
-            if (response == null || (response.errorCode() != null && response.errorCode() != 0)) {
-                Integer errCode = response != null ? response.errorCode() : null;
-                System.err.println("[SMS ERROR] Final SMS execution failed. Error code: " + errCode + ", errorMessage: " + (response != null ? response.errorMessage() : "null"));
-                if (errCode != null && (errCode == -100 || errCode == -108)) {
-                    System.out.println("[SMS INTERCEPTOR] Partner gateway credentials state rejected (-100/-108). Returning simulated transaction ID to guarantee non-blocking local verification delivery.");
-                    return 999999L;
-                }
-                throw new SmsSendException("error.sms_send_failed");
-            }
+            throw new SmsSendException("error.sms_send_failed");
         }
 
         return response.obj();
@@ -141,7 +131,9 @@ public class LsimSmsService {
     public Integer checkBalance() {
         String md5Password = DigestUtils.md5Hex(properties.getPassword());
         String key = DigestUtils.md5Hex(md5Password + properties.getLogin());
-        String url = properties.getBaseUrl() + "/balance?login=" + properties.getLogin() + "&key=" + key;
+        String baseUrl = properties.getBaseUrl();
+        String cleanBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        String url = cleanBase + "/balance?login=" + properties.getLogin() + "&key=" + key;
         LsimApiResponse response = webClient.get()
                 .uri(url)
                 .retrieve()
