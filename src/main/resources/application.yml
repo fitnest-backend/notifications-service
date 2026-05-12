@@ -91,7 +91,7 @@ spring:
 
   # Kafka
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka-service.fitnest-development.svc.cluster.local:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     consumer:
       group-id: notifications-backend
       auto-offset-reset: earliest
@@ -108,8 +108,9 @@ spring:
   mail:
     host: ${SPRING_MAIL_HOST:smtp.zoho.com}
     port: ${SPRING_MAIL_PORT:587}
-    username: ${SPRING_MAIL_USERNAME:}
-    password: ${SPRING_MAIL_PASSWORD:}
+    username: ${SPRING_MAIL_USERNAME}
+    password: ${SPRING_MAIL_PASSWORD}
+    from: ${SPRING_MAIL_FROM}
     properties:
       mail:
         smtp:
@@ -144,7 +145,7 @@ eureka:
     enabled: false
 
 jwt:
-  secret: ${JWT_SECRET:your-jwt-secret-change-in-production}
+  secret: ${JWT_SECRET}
   issuer: ${JWT_ISSUER:fitnest}
 
 # ✅ Updated service URLs
@@ -179,7 +180,7 @@ management:
         enabled: true
 
 springdoc:
-  server-url: ${SPRINGDOC_SERVER_URL:}
+  server-url: ${SPRINGDOC_SERVER_URL:https://dev-api.fitnest.az}
   api-docs:
     path: /v3/api-docs
     cache:
@@ -203,10 +204,10 @@ springdoc:
 # Lsim-sms
 lsim:
   sms:
-    base-url: https://apps.lsim.az
-    login: ${SMS_LOGIN:YOUR_LOGIN}
-    password: ${SMS_PASSWORD:YOUR_PASSWORD}
-    default-sender: ${SMS_SENDER:YOUR_SENDER}
+    base-url: ${LSIM_SMS_BASE_URL:https://apps.lsim.az/quicksms/v1/}
+    login: ${SMS_LOGIN}
+    password: ${SMS_PASSWORD}
+    default-sender: ${SMS_SENDER}
     default-unicode: false
 
 grpc:
