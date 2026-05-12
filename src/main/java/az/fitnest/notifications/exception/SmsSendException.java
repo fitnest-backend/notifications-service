@@ -5,7 +5,7 @@ public class SmsSendException extends LsimSmsException {
         super(message);
     }
 
-    public SmsSendException(String message, Integer errorCode) {
+    public SmsSendException(String message, String errorCode) {
         super(message, errorCode);
     }
 
@@ -13,7 +13,7 @@ public class SmsSendException extends LsimSmsException {
         super(message, cause);
     }
 
-    public SmsSendException(String message, Integer errorCode, Throwable cause) {
+    public SmsSendException(String message, String errorCode, Throwable cause) {
         super(message, errorCode, cause);
     }
 

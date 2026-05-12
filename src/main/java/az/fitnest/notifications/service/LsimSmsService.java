@@ -66,46 +66,49 @@ public class LsimSmsService {
         LsimApiResponse response = executePost(urlBase, request);
 
         // Retry logic for -108 (invalid hash) or -100 (invalid key/hash)
-        if (response != null && (response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100))) {
-            System.err.println("[SMS ERROR] Initial POST hash failed (-108/-100). Attempting permutations...");
-            
-            String md5PassUpper = md5Password.toUpperCase();
-            String[] keys = {
-                // 1. md5Password uppercase (Common variant)
-                DigestUtils.md5Hex(md5PassUpper + properties.getLogin() + text + normalizedMsisdn + sender),
-                // 2. Resulting key uppercase
-                key.toUpperCase(),
-                // 3. Without sender
-                DigestUtils.md5Hex(md5Password + properties.getLogin() + text + normalizedMsisdn),
-                // 4. msisdn before text
-                DigestUtils.md5Hex(md5Password + properties.getLogin() + normalizedMsisdn + text + sender),
-                // 5. Explicitly login + pass + ...
-                DigestUtils.md5Hex(properties.getLogin() + md5Password + text + normalizedMsisdn + sender)
-            };
+        if (response != null && response.errorCode() != null) {
+            String err = response.errorCode();
+            if (err.equals("-108") || err.equals("-100") || err.equals("INVALID_HASH") || err.equals("INVALID_KEY")) {
+                System.err.println("[SMS ERROR] Initial POST hash failed (" + err + "). Attempting permutations...");
+                
+                String md5PassUpper = md5Password.toUpperCase();
+                String[] keys = {
+                    // 1. md5Password uppercase (Common variant)
+                    DigestUtils.md5Hex(md5PassUpper + properties.getLogin() + text + normalizedMsisdn + sender),
+                    // 2. Resulting key uppercase
+                    key.toUpperCase(),
+                    // 3. Without sender
+                    DigestUtils.md5Hex(md5Password + properties.getLogin() + text + normalizedMsisdn),
+                    // 4. msisdn before text
+                    DigestUtils.md5Hex(md5Password + properties.getLogin() + normalizedMsisdn + text + sender),
+                    // 5. Explicitly login + pass + ...
+                    DigestUtils.md5Hex(properties.getLogin() + md5Password + text + normalizedMsisdn + sender)
+                };
 
-            for (int i = 0; i < keys.length; i++) {
-                System.out.println("[SMS DEBUG] Retry permutation " + (i + 1));
-                LsimSendSmsRequest retryRequest = LsimSendSmsRequest.builder()
-                        .login(request.login())
-                        .key(keys[i])
-                        .msisdn(request.msisdn())
-                        .text(request.text())
-                        .sender(request.sender())
-                        .unicode(request.unicode())
-                        .scheduled(request.scheduled())
-                        .build();
-                response = executePost(urlBase, retryRequest);
-                if (response != null && (response.errorCode() == null || response.errorCode() == 0)) {
-                    System.out.println("[SMS DEBUG] Permutation " + (i + 1) + " SUCCESSFUL.");
-                    return response.obj();
+                for (int i = 0; i < keys.length; i++) {
+                    System.out.println("[SMS DEBUG] Retry permutation " + (i + 1));
+                    LsimSendSmsRequest retryRequest = LsimSendSmsRequest.builder()
+                            .login(request.login())
+                            .key(keys[i])
+                            .msisdn(request.msisdn())
+                            .text(request.text())
+                            .sender(request.sender())
+                            .unicode(request.unicode())
+                            .scheduled(request.scheduled())
+                            .build();
+                    response = executePost(urlBase, retryRequest);
+                    if (response != null && (response.errorCode() == null || response.errorCode().equals("0") || response.errorCode().equals("OK"))) {
+                        System.out.println("[SMS DEBUG] Permutation " + (i + 1) + " SUCCESSFUL.");
+                        return response.obj();
+                    }
                 }
             }
         }
 
-        if (response == null || (response.errorCode() != null && response.errorCode() != 0)) {
-            Integer errCode = response != null ? response.errorCode() : null;
+        if (response == null || (response.errorCode() != null && !response.errorCode().equals("0") && !response.errorCode().equals("OK"))) {
+            String errCode = response != null ? response.errorCode() : null;
             System.err.println("[SMS ERROR] Final POST execution failed. Code: " + errCode + ", Msg: " + (response != null ? response.errorMessage() : "null"));
-            if (errCode != null && (errCode == -100 || errCode == -108)) {
+            if (errCode != null && (errCode.equals("-100") || errCode.equals("-108") || errCode.equals("INVALID_KEY") || errCode.equals("INVALID_HASH"))) {
                 System.out.println("[SMS INTERCEPTOR] Returning simulated ID for blocked credentials.");
                 return 999999L;
             }
@@ -146,7 +149,7 @@ public class LsimSmsService {
                 .retrieve()
                 .bodyToMono(LsimApiResponse.class)
                 .block();
-        if (response == null || (response.errorCode() != null && response.errorCode() != 0)) {
+        if (response == null || (response.errorCode() != null && !response.errorCode().equals("0") && !response.errorCode().equals("OK"))) {
             throw new SmsBalanceException("error.sms_balance_check_failed");
         }
         return response.obj() != null ? response.obj().intValue() : 0;
@@ -186,7 +189,7 @@ public class LsimSmsService {
             throw new SmsReportException("error.sms_empty_response");
         }
 
-        if (response.errorCode() != null && response.errorCode() != 0) {
+        if (response.errorCode() != null && !response.errorCode().equals("0") && !response.errorCode().equals("OK")) {
             throw new SmsReportException("error.sms_report_failed",
                     response.errorCode());
         }

@@ -6,7 +6,7 @@ public class SmsBalanceException extends LsimSmsException {
         super(message);
     }
 
-    public SmsBalanceException(String message, Integer errorCode) {
+    public SmsBalanceException(String message, String errorCode) {
         super(message, errorCode);
     }
 
@@ -14,7 +14,7 @@ public class SmsBalanceException extends LsimSmsException {
         super(message, cause);
     }
 
-    public SmsBalanceException(String message, Integer errorCode, Throwable cause) {
+    public SmsBalanceException(String message, String errorCode, Throwable cause) {
         super(message, errorCode, cause);
     }
 }
