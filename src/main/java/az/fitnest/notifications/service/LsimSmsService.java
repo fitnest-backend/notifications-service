@@ -44,7 +44,7 @@ public class LsimSmsService {
 
         String baseUrl = properties.getBaseUrl();
         if (baseUrl.endsWith("/")) baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
-        String urlBase = baseUrl + "/send";
+        String urlBase = baseUrl + "/quicksms/v1/send";
 
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromUriString(urlBase)
