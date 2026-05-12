@@ -78,16 +78,38 @@ public class LsimSmsService {
         }
         if (response.errorCode() != null && response.errorCode() != 0) {
             System.err.println("[SMS ERROR] Provider returned error code: " + response.errorCode() + ", successMessage: " + response.successMessage() + ", errorMessage: " + response.errorMessage());
-            if (response.errorCode() == -108) {
+            if (response.errorCode() == -108 || response.errorCode() == -100) {
                 System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 1 (login + msisdn + sender + text)");
                 String keyAlt1 = DigestUtils.md5Hex(md5Password + properties.getLogin() + normalizedMsisdn + sender + textParam);
                 String urlAlt1 = builder.replaceQueryParam("key", keyAlt1).toUriString();
                 response = webClient.get().uri(urlAlt1).retrieve().bodyToMono(LsimApiResponse.class).block();
-                if (response != null && response.errorCode() != null && response.errorCode() == -108) {
+                if (response != null && response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100)) {
                     System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 2 (login + msisdn + text + sender)");
                     String keyAlt2 = DigestUtils.md5Hex(md5Password + properties.getLogin() + normalizedMsisdn + textParam + sender);
                     String urlAlt2 = builder.replaceQueryParam("key", keyAlt2).toUriString();
                     response = webClient.get().uri(urlAlt2).retrieve().bodyToMono(LsimApiResponse.class).block();
+                }
+                if (response != null && response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100)) {
+                    System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 3 (login + text + sender + msisdn)");
+                    String keyAlt3 = DigestUtils.md5Hex(md5Password + properties.getLogin() + textParam + sender + normalizedMsisdn);
+                    String urlAlt3 = builder.replaceQueryParam("key", keyAlt3).toUriString();
+                    response = webClient.get().uri(urlAlt3).retrieve().bodyToMono(LsimApiResponse.class).block();
+                }
+                if (response != null && response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100)) {
+                    System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 4 (login + msisdn + sender without text)");
+                    String keyAlt4 = DigestUtils.md5Hex(md5Password + properties.getLogin() + normalizedMsisdn + sender);
+                    String urlAlt4 = builder.replaceQueryParam("key", keyAlt4).toUriString();
+                    response = webClient.get().uri(urlAlt4).retrieve().bodyToMono(LsimApiResponse.class).block();
+                }
+                if (response != null && response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100)) {
+                    System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 5 (md5Password directly)");
+                    String urlAlt5 = builder.replaceQueryParam("key", md5Password).toUriString();
+                    response = webClient.get().uri(urlAlt5).retrieve().bodyToMono(LsimApiResponse.class).block();
+                }
+                if (response != null && response.errorCode() != null && (response.errorCode() == -108 || response.errorCode() == -100)) {
+                    System.out.println("[SMS DEBUG] Attempting signature hash retry using permutation 6 (plain password directly)");
+                    String urlAlt6 = builder.replaceQueryParam("key", properties.getPassword()).toUriString();
+                    response = webClient.get().uri(urlAlt6).retrieve().bodyToMono(LsimApiResponse.class).block();
                 }
             }
             if (response != null && response.errorCode() != null && response.errorCode() == -109) {
