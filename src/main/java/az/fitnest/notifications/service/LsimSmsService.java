@@ -36,11 +36,13 @@ public class LsimSmsService {
 
         String textParam = text;
         String md5Password = DigestUtils.md5Hex(properties.getPassword());
+        // LSIM Docs spec: md5 of ((md5 of your password) + LOGIN + MSG_BODY + MSISDN + SENDER)
         String key = DigestUtils.md5Hex(md5Password + properties.getLogin() + textParam + normalizedMsisdn + sender);
 
         boolean useUnicode = unicode != null ? unicode : properties.getDefaultUnicode();
         boolean hasNonAscii = !text.chars().allMatch(c -> c < 128);
         boolean unicodeFlag = useUnicode || hasNonAscii;
+        String unicodeVal = unicodeFlag ? "1" : "0";
 
         String baseUrl = properties.getBaseUrl();
         if (baseUrl.endsWith("/")) baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
@@ -53,7 +55,7 @@ public class LsimSmsService {
                 .queryParam("text", textParam)
                 .queryParam("sender", sender)
                 .queryParam("key", key)
-                .queryParam("unicode", unicodeFlag);
+                .queryParam("unicode", unicodeVal);
 
         String url = builder.toUriString();
 
