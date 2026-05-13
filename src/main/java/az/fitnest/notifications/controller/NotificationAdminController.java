@@ -47,7 +47,7 @@ public class NotificationAdminController {
             for (String phone : request.phoneNumbers()) {
                 if (phone != null && !phone.isBlank()) {
                     try {
-                        Long txId = lsimSmsService.sendSms(phone, request.text(), null, true, null);
+                        Long txId = lsimSmsService.sendSms(phone, request.text());
                         responses.add(new az.fitnest.notifications.dto.SendSmsResponse(txId));
                     } catch (Exception e) {
                         // ignore failures for individual numbers to continue dispatching rest
