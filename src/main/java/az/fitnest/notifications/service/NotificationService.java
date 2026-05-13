@@ -18,6 +18,8 @@ public interface NotificationService {
 
     void broadcastPushNotification(String title, String body);
 
+    java.util.List<PushResult> sendPushToUsers(java.util.List<Long> userIds, String title, String body, Map<String, String> data);
+
     void sendPushNotification(String token, String title, String body);
 
     void sendPushNotification(String token, String title, String body, Map<String, String> data);

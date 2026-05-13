@@ -54,6 +54,25 @@ public class SmsController {
         return ResponseEntity.ok(new SendSmsResponse(transactionId));
     }
 
+    @PostMapping("/bulk")
+    @Operation(summary = "Çoxlu alıcıya SMS göndərin", description = "Verilmiş nömrələr siyahısına eyni məzmunlu SMS göndərir.")
+    public ResponseEntity<java.util.List<SendSmsResponse>> sendBulkSms(@Valid @RequestBody az.fitnest.notifications.dto.BulkSmsRequest request) {
+        java.util.List<SendSmsResponse> responses = new java.util.ArrayList<>();
+        if (request.phoneNumbers() != null) {
+            for (String phone : request.phoneNumbers()) {
+                if (phone != null && !phone.isBlank()) {
+                    try {
+                        Long txId = lsimSmsService.sendSms(phone, request.text(), null, true, null);
+                        responses.add(new SendSmsResponse(txId));
+                    } catch (Exception e) {
+                        // ignore failures for individual numbers to continue dispatching rest
+                    }
+                }
+            }
+        }
+        return ResponseEntity.ok(responses);
+    }
+
     @GetMapping("/balance")
     @Operation(
             summary = "Qalan SMS balansını yoxlayın",

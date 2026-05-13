@@ -27,4 +27,10 @@ public class NotificationAdminController {
         notificationService.broadcastPushNotification(request.title(), request.body());
         return ResponseEntity.ok().build();
     }
+
+    @Operation(summary = "Seçilmiş istifadəçilərə bildiriş göndərin (Admin)", description = "Siyahıdakı xüsusi istifadəçilərə push bildirişi göndərir.")
+    @PostMapping("/bulk")
+    public ResponseEntity<java.util.List<az.fitnest.notifications.dto.PushResult>> sendBulkPush(@Valid @RequestBody az.fitnest.notifications.dto.BulkPushRequest request) {
+        return ResponseEntity.ok(notificationService.sendPushToUsers(request.userIds(), request.title(), request.body(), request.data()));
+    }
 }
