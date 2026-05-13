@@ -64,7 +64,11 @@ public class NotificationAdminController {
         if (request.emails() != null) {
             for (String email : request.emails()) {
                 if (email != null && !email.isBlank()) {
-                    emailService.sendSimpleEmail(email, request.subject(), request.body());
+                    java.util.Map<String, Object> vars = new java.util.HashMap<>();
+                    vars.put("subject", request.subject());
+                    // Convert linebreaks to tags or use pre-wrap styling. utext supports pure format rendering.
+                    vars.put("body", request.body());
+                    emailService.sendHtmlEmail(email, request.subject(), "bulk-notification.html", vars);
                 }
             }
         }
