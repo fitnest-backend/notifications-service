@@ -54,6 +54,8 @@ public class SmsController {
         return ResponseEntity.ok(new SendSmsResponse(transactionId));
     }
 
+
+
     @GetMapping("/balance")
     @Operation(
             summary = "Qalan SMS balansını yoxlayın",

@@ -7,5 +7,5 @@ public record LsimApiResponse(
     String successMessage,
     String errorMessage,
     Long obj,
-    Integer errorCode
+    String errorCode
 ) {}

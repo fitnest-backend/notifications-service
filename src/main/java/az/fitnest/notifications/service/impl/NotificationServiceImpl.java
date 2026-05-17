@@ -244,6 +244,18 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Transactional
+    public List<PushResult> sendPushToUsers(List<Long> userIds, String title, String body, Map<String, String> data) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<PushResult> results = new ArrayList<>();
+        for (Long userId : userIds) {
+            results.add(sendPushToUser(userId, title, body, data));
+        }
+        return results;
+    }
+
+    @Transactional
     protected Notification savePendingNotification(Long userId, String title, String body) {
         Notification notification = new Notification();
         notification.setUserId(userId);
