@@ -1,0 +1,19 @@
+[
+  {
+    "id": "welcome_push",
+    "channel": "PUSH",
+    "name": "WELCOME_PUSH",
+    "title": "Xoş gəldiniz",
+    "body": "Fitnest-ə xoş gəldiniz!",
+    "quickReplies": []
+  },
+  {
+    "id": "welcome_sms",
+    "channel": "SMS",
+    "name": "WELCOME_SMS",
+    "title": null,
+    "body": "Fitnest-ə xoş gəldiniz!",
+    "quickReplies": []
+  }
+]
+
