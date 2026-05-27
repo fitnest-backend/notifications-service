@@ -79,6 +79,17 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Oxunmamış bildirişlərin sayını əldə edin", description = "İstifadəçinin oxunmamış bildirişlərinin sayını qaytarır.")
+    @GetMapping("/unread-count")
+    public ResponseEntity<Integer> getUnreadCount(@AuthenticationPrincipal Object principal) {
+        Long userId = extractUserId(principal);
+        int count = 0;
+        if (userId != null) {
+            count = notificationService.getUnreadCount(userId);
+        }
+        return ResponseEntity.ok(count);
+    }
+
     private Long extractUserId(Object principal) {
         if (principal instanceof Long) {
             return (Long) principal;

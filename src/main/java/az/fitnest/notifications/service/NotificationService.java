@@ -39,4 +39,6 @@ public interface NotificationService {
     java.util.List<Device> getDevicesByUserId(Long userId);
 
     void saveDevice(Device device);
+
+    int getUnreadCount(Long userId);
 }

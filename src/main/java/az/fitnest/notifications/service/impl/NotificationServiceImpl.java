@@ -400,4 +400,12 @@ public class NotificationServiceImpl implements NotificationService {
     public void saveDevice(Device device) {
         deviceRepository.save(device);
     }
+
+    @Override
+    public int getUnreadCount(Long userId) {
+        if (userId == null) {
+            return 0;
+        }
+        return notificationRepository.countByUserIdAndIsReadFalse(userId);
+    }
 }
