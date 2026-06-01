@@ -51,6 +51,8 @@ public class LsimSmsService {
 
         String targetUrl = getUrl("send");
         System.out.println("[SMS DEBUG] Sending GET request to: " + targetUrl + " with sender: " + sender + ", msisdn: " + normalizedMsisdn);
+        System.out.println("[SMS DEBUG] Calculated Key: " + key);
+        System.out.println("[SMS DEBUG] Text raw: " + text.replace("\n", "\\n").replace("\r", "\\r"));
 
         LsimApiResponse response = null;
         try {
@@ -64,6 +66,7 @@ public class LsimSmsService {
                 builder.queryParam("unicode", "true");
             }
             java.net.URI uri = builder.build().toUri();
+            System.out.println("[SMS DEBUG] Built URI: " + uri.toString());
 
             response = webClient.get()
                     .uri(uri)
