@@ -21,20 +21,18 @@ public class LsimSmsService {
     private final WebClient webClient;
     private final LsimSmsProperties properties;
 
+    private String getUrl(String endpoint) {
+        String baseUrl = properties.getBaseUrl();
+        String cleanBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        if (cleanBase.endsWith("/quicksms/v1")) {
+            return cleanBase + "/" + endpoint;
+        } else {
+            return cleanBase + "/quicksms/v1/" + endpoint;
+        }
+    }
+
     public Long sendSms(String msisdn, String text, String sender,
                         Boolean unicode, String scheduled) {
-        String baseUrlRaw = properties.getBaseUrl();
-        String urlBase;
-        // The POST endpoint is /quicksms/v1/smssender according to documentation
-        if (baseUrlRaw.contains("/smssender")) {
-            urlBase = baseUrlRaw;
-        } else {
-            String cleanBase = baseUrlRaw.endsWith("/") ? baseUrlRaw.substring(0, baseUrlRaw.length() - 1) : baseUrlRaw;
-            // If it ends with /v1, just append /smssender, otherwise append full path
-            urlBase = cleanBase.endsWith("/v1") ? cleanBase + "/smssender" : cleanBase + "/quicksms/v1/smssender";
-        }
-
-        System.out.println("[SMS CONFIG] target-url: " + urlBase);
         System.out.println("[SMS CONFIG] login: " + properties.getLogin());
         System.out.println("[SMS CONFIG] sender: " + sender);
 
@@ -51,63 +49,35 @@ public class LsimSmsService {
         boolean hasNonAscii = !text.chars().allMatch(c -> c < 128);
         boolean unicodeFlag = useUnicode || hasNonAscii;
 
-        LsimSendSmsRequest request = LsimSendSmsRequest.builder()
-                .login(properties.getLogin())
-                .key(key)
-                .msisdn(normalizedMsisdn)
-                .text(text)
-                .sender(sender)
-                .unicode(unicodeFlag)
-                .scheduled(scheduled != null ? scheduled : "NOW")
-                .build();
+        String targetUrl = getUrl("send");
+        System.out.println("[SMS DEBUG] Sending GET request to: " + targetUrl + " with sender: " + sender + ", msisdn: " + normalizedMsisdn);
 
-        System.out.println("[SMS DEBUG] Sending POST request to: " + urlBase + " with sender: " + sender);
-
-        LsimApiResponse response = executePost(urlBase, request);
-
-        // Retry logic for -108 (invalid hash) or -100 (invalid key/hash)
-        if (response != null && response.errorCode() != null) {
-            String err = response.errorCode();
-            if (err.equals("-108") || err.equals("-100") || err.equals("INVALID_HASH") || err.equals("INVALID_KEY")) {
-                System.err.println("[SMS ERROR] Initial POST hash failed (" + err + "). Attempting permutations...");
-                
-                String md5PassUpper = md5Password.toUpperCase();
-                String[] keys = {
-                    // 1. md5Password uppercase (Common variant)
-                    DigestUtils.md5Hex(md5PassUpper + properties.getLogin() + text + normalizedMsisdn + sender),
-                    // 2. Resulting key uppercase
-                    key.toUpperCase(),
-                    // 3. Without sender
-                    DigestUtils.md5Hex(md5Password + properties.getLogin() + text + normalizedMsisdn),
-                    // 4. msisdn before text
-                    DigestUtils.md5Hex(md5Password + properties.getLogin() + normalizedMsisdn + text + sender),
-                    // 5. Explicitly login + pass + ...
-                    DigestUtils.md5Hex(properties.getLogin() + md5Password + text + normalizedMsisdn + sender)
-                };
-
-                for (int i = 0; i < keys.length; i++) {
-                    System.out.println("[SMS DEBUG] Retry permutation " + (i + 1));
-                    LsimSendSmsRequest retryRequest = LsimSendSmsRequest.builder()
-                            .login(request.login())
-                            .key(keys[i])
-                            .msisdn(request.msisdn())
-                            .text(request.text())
-                            .sender(request.sender())
-                            .unicode(request.unicode())
-                            .scheduled(request.scheduled())
-                            .build();
-                    response = executePost(urlBase, retryRequest);
-                    if (response != null && (response.errorCode() == null || response.errorCode().equals("0") || response.errorCode().equals("OK"))) {
-                        System.out.println("[SMS DEBUG] Permutation " + (i + 1) + " SUCCESSFUL.");
-                        return response.obj();
-                    }
-                }
+        LsimApiResponse response = null;
+        try {
+            var builder = UriComponentsBuilder.fromUriString(targetUrl)
+                    .queryParam("login", properties.getLogin())
+                    .queryParam("msisdn", normalizedMsisdn)
+                    .queryParam("text", text)
+                    .queryParam("sender", sender)
+                    .queryParam("key", key);
+            if (unicodeFlag) {
+                builder.queryParam("unicode", "true");
             }
+            java.net.URI uri = builder.build().toUri();
+
+            response = webClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .bodyToMono(LsimApiResponse.class)
+                    .block();
+        } catch (Exception e) {
+            System.err.println("[SMS ERROR] GET request failed: " + e.getMessage());
+            throw new SmsSendException("error.sms_send_failed");
         }
 
         if (response == null || (response.errorCode() != null && !response.errorCode().equals("0") && !response.errorCode().equals("OK"))) {
             String errCode = response != null ? response.errorCode() : null;
-            System.err.println("[SMS ERROR] Final POST execution failed. Code: " + errCode + ", Msg: " + (response != null ? response.errorMessage() : "null"));
+            System.err.println("[SMS ERROR] Final GET execution failed. Code: " + errCode + ", Msg: " + (response != null ? response.errorMessage() : "null"));
             if (errCode != null && (errCode.equals("-100") || errCode.equals("-108") || errCode.equals("INVALID_KEY") || errCode.equals("INVALID_HASH"))) {
                 System.out.println("[SMS INTERCEPTOR] Returning simulated ID for blocked credentials.");
                 return 999999L;
@@ -118,21 +88,6 @@ public class LsimSmsService {
         return response.obj();
     }
 
-    private LsimApiResponse executePost(String url, LsimSendSmsRequest request) {
-        try {
-            return webClient.post()
-                    .uri(url)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(request)
-                    .retrieve()
-                    .bodyToMono(LsimApiResponse.class)
-                    .block();
-        } catch (Exception e) {
-            System.err.println("[SMS ERROR] POST request failed: " + e.getMessage());
-            return null;
-        }
-    }
-
     public Long sendSms(String msisdn, String text) {
         return sendSms(msisdn, text, properties.getDefaultSender(),
                 properties.getDefaultUnicode(), "NOW");
@@ -141,9 +96,7 @@ public class LsimSmsService {
     public Integer checkBalance() {
         String md5Password = DigestUtils.md5Hex(properties.getPassword());
         String key = DigestUtils.md5Hex(md5Password + properties.getLogin());
-        String baseUrl = properties.getBaseUrl();
-        String cleanBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-        String url = cleanBase + "/balance?login=" + properties.getLogin() + "&key=" + key;
+        String url = getUrl("balance") + "?login=" + properties.getLogin() + "&key=" + key;
         LsimApiResponse response = webClient.get()
                 .uri(url)
                 .retrieve()
@@ -156,10 +109,10 @@ public class LsimSmsService {
     }
 
     public SmsStatus getDeliveryStatus(Long transactionId) {
-        String url = "/quicksms/v1/report?login={login}&trans_id={trans_id}";
+        String url = getUrl("report") + "?login=" + properties.getLogin() + "&trans_id=" + transactionId;
 
         LsimApiResponse response = webClient.get()
-                .uri(url, properties.getLogin(), transactionId)
+                .uri(url)
                 .retrieve()
                 .bodyToMono(LsimApiResponse.class)
                 .block();
@@ -174,7 +127,7 @@ public class LsimSmsService {
                 .build();
 
         LsimApiResponse response = webClient.post()
-                .uri("/quicksms/v1/smsreporter")
+                .uri(getUrl("smsreporter"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .retrieve()
