@@ -59,49 +59,45 @@ public class NotificationServiceImpl implements NotificationService {
         if (platform == null) {
             throw new IllegalArgumentException("Platform must be specified and valid");
         }
-        List<Device> userDevices = deviceRepository.findAllByUserId(userId);
         
-        // Find if they had a previous current device, and check its notification preference.
-        // If they had a current device, copy its preference. If not, default to true.
-        boolean previousPreference = true;
-        Optional<Device> previousCurrent = userDevices.stream()
-                .filter(d -> Boolean.TRUE.equals(d.getIsCurrent()))
-                .findFirst();
-        if (previousCurrent.isPresent()) {
-            previousPreference = Boolean.TRUE.equals(previousCurrent.get().getNotificationEnabled());
+        Optional<Device> existingDeviceOpt = deviceRepository.findByPushToken(pushToken);
+        boolean notificationEnabled = true;
+        if (existingDeviceOpt.isPresent()) {
+            notificationEnabled = Boolean.TRUE.equals(existingDeviceOpt.get().getNotificationEnabled());
         }
         
-        for (Device d : userDevices) {
-            d.setIsCurrent(false);
-            d.setNotificationEnabled(false);
-            deviceRepository.save(d);
-        }
-        
-        final boolean finalPreference = previousPreference;
         try {
-            deviceRepository.findByPushToken(pushToken)
-                    .ifPresentOrElse(
-                            device -> {
-                                device.setUserId(userId);
-                                device.setPlatform(platform);
-                                device.setIsCurrent(true);
-                                device.setNotificationEnabled(finalPreference);
-                                deviceRepository.save(device);
-                            },
-                            () -> {
-                                Device device = new Device();
-                                device.setUserId(userId);
-                                device.setPushToken(pushToken);
-                                device.setPlatform(platform);
-                                device.setCreatedAt(LocalDateTime.now());
-                                device.setIsCurrent(true);
-                                device.setNotificationEnabled(finalPreference);
-                                deviceRepository.save(device);
-                            }
-                    );
+            Device device;
+            if (existingDeviceOpt.isPresent()) {
+                device = existingDeviceOpt.get();
+                device.setUserId(userId);
+                device.setPlatform(platform);
+                device.setIsCurrent(true);
+                device.setNotificationEnabled(notificationEnabled);
+            } else {
+                device = new Device();
+                device.setUserId(userId);
+                device.setPushToken(pushToken);
+                device.setPlatform(platform);
+                device.setCreatedAt(LocalDateTime.now());
+                device.setIsCurrent(true);
+                device.setNotificationEnabled(notificationEnabled);
+            }
+            deviceRepository.save(device);
+            
+            // Deactivate all OTHER devices of this user
+            List<Device> userDevices = deviceRepository.findAllByUserId(userId);
+            for (Device d : userDevices) {
+                if (!d.getPushToken().equals(pushToken)) {
+                    d.setIsCurrent(false);
+                    d.setNotificationEnabled(false);
+                    deviceRepository.save(d);
+                }
+            }
         } catch (DataIntegrityViolationException e) {
             logger.error("Device registration failed for user {}: {}", userId, e.getMessage());
         }
+        
         List<Device> afterDevices = deviceRepository.findAllByUserId(userId);
         long currentCount = afterDevices.stream().filter(Device::getIsCurrent).count();
         if (currentCount != 1) {
