@@ -72,7 +72,7 @@ public class NotificationServiceImpl implements NotificationService {
                                 device.setUserId(userId);
                                 device.setPlatform(platform);
                                 device.setIsCurrent(true);
-                                device.setNotificationEnabled(false);
+                                device.setNotificationEnabled(true);
                                 deviceRepository.save(device);
                             },
                             () -> {
@@ -82,7 +82,7 @@ public class NotificationServiceImpl implements NotificationService {
                                 device.setPlatform(platform);
                                 device.setCreatedAt(LocalDateTime.now());
                                 device.setIsCurrent(true);
-                                device.setNotificationEnabled(false);
+                                device.setNotificationEnabled(true);
                                 deviceRepository.save(device);
                             }
                     );
