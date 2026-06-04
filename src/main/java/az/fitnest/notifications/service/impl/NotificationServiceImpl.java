@@ -60,11 +60,24 @@ public class NotificationServiceImpl implements NotificationService {
             throw new IllegalArgumentException("Platform must be specified and valid");
         }
         List<Device> userDevices = deviceRepository.findAllByUserId(userId);
+        
+        // Find if they had a previous current device, and check its notification preference.
+        // If they had a current device, copy its preference. If not, default to true.
+        boolean previousPreference = true;
+        Optional<Device> previousCurrent = userDevices.stream()
+                .filter(d -> Boolean.TRUE.equals(d.getIsCurrent()))
+                .findFirst();
+        if (previousCurrent.isPresent()) {
+            previousPreference = Boolean.TRUE.equals(previousCurrent.get().getNotificationEnabled());
+        }
+        
         for (Device d : userDevices) {
             d.setIsCurrent(false);
             d.setNotificationEnabled(false);
             deviceRepository.save(d);
         }
+        
+        final boolean finalPreference = previousPreference;
         try {
             deviceRepository.findByPushToken(pushToken)
                     .ifPresentOrElse(
@@ -72,7 +85,7 @@ public class NotificationServiceImpl implements NotificationService {
                                 device.setUserId(userId);
                                 device.setPlatform(platform);
                                 device.setIsCurrent(true);
-                                device.setNotificationEnabled(true);
+                                device.setNotificationEnabled(finalPreference);
                                 deviceRepository.save(device);
                             },
                             () -> {
@@ -82,7 +95,7 @@ public class NotificationServiceImpl implements NotificationService {
                                 device.setPlatform(platform);
                                 device.setCreatedAt(LocalDateTime.now());
                                 device.setIsCurrent(true);
-                                device.setNotificationEnabled(true);
+                                device.setNotificationEnabled(finalPreference);
                                 deviceRepository.save(device);
                             }
                     );
