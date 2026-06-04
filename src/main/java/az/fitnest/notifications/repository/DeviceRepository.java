@@ -13,10 +13,10 @@ import java.util.Optional;
 public interface DeviceRepository extends JpaRepository<Device, Long> {
     List<Device> findAllByUserId(Long userId);
 
-    @Query("SELECT d.pushToken FROM Device d WHERE d.userId = :userId")
+    @Query("SELECT d.pushToken FROM Device d WHERE d.userId = :userId AND d.notificationEnabled = true")
     List<String> findPushTokensByUserId(@Param("userId") Long userId);
 
-    @Query("SELECT d.pushToken FROM Device d")
+    @Query("SELECT d.pushToken FROM Device d WHERE d.notificationEnabled = true")
     List<String> findAllPushTokens();
 
     Optional<Device> findByPushToken(String pushToken);

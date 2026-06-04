@@ -61,10 +61,9 @@ public class NotificationServiceImpl implements NotificationService {
         }
         List<Device> userDevices = deviceRepository.findAllByUserId(userId);
         for (Device d : userDevices) {
-            if (Boolean.TRUE.equals(d.getIsCurrent())) {
-                d.setIsCurrent(false);
-                deviceRepository.save(d);
-            }
+            d.setIsCurrent(false);
+            d.setNotificationEnabled(false);
+            deviceRepository.save(d);
         }
         try {
             deviceRepository.findByPushToken(pushToken)
@@ -329,8 +328,11 @@ public class NotificationServiceImpl implements NotificationService {
 
         savePendingNotification(device.getUserId(), title, body);
 
-        sendPushNotification(device.getPushToken(), title, body, Collections.emptyMap());
-
+        if (Boolean.TRUE.equals(device.getNotificationEnabled())) {
+            sendPushNotification(device.getPushToken(), title, body, Collections.emptyMap());
+        } else {
+            logger.info("Skipping push notification to device {} because notifications are disabled.", deviceId);
+        }
     }
 
     public Page<NotificationDto> getUserNotifications(Long userId, Pageable pageable) {
