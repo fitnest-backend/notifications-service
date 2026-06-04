@@ -38,7 +38,19 @@ public class DeviceController {
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody DeviceRegistrationRequest request) {
 
-        Platform platform = DeviceDetector.detectPlatform();
+        Platform platform = null;
+        if (request.platform() != null && !request.platform().trim().isEmpty()) {
+            try {
+                platform = Platform.valueOf(request.platform().trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Ignore and fall back
+            }
+        }
+
+        if (platform == null) {
+            platform = DeviceDetector.detectPlatform();
+        }
+
         if (platform == null) {
             platform = Platform.ANDROID;
         }

@@ -6,5 +6,6 @@ import lombok.Builder;
 @Builder
 public record DeviceRegistrationRequest(
     @NotBlank(message = "Push tokeni mütləqdir")
-    String pushToken
+    String pushToken,
+    String platform
 ) {}
