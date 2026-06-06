@@ -6,21 +6,17 @@ import az.fitnest.notifications.dto.DirectPushRequest;
 import az.fitnest.notifications.repository.DeviceRepository;
 import az.fitnest.notifications.service.NotificationService;
 import az.fitnest.notifications.util.DeviceDetector;
-import az.fitnest.notifications.model.entity.Device;
 import az.fitnest.notifications.model.enums.Platform;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/devices")
@@ -38,23 +34,7 @@ public class DeviceController {
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody DeviceRegistrationRequest request) {
 
-        Platform platform = null;
-        if (request.platform() != null && !request.platform().trim().isEmpty()) {
-            try {
-                platform = Platform.valueOf(request.platform().trim().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                // Ignore and fall back
-            }
-        }
-
-        if (platform == null) {
-            platform = DeviceDetector.detectPlatform();
-        }
-
-        if (platform == null) {
-            platform = Platform.ANDROID;
-        }
-
+        Platform platform = resolvePlatform(request.platform());
         notificationService.registerDevice(userId, request.pushToken(), platform);
         return ResponseEntity.ok().build();
     }
@@ -64,7 +44,7 @@ public class DeviceController {
     public ResponseEntity<List<DeviceDto>> getDevicesByUserId(@PathVariable Long userId) {
         List<DeviceDto> devices = deviceRepository.findAllByUserId(userId).stream()
                 .map(az.fitnest.notifications.mapper.DeviceMapper::toDto)
-                .collect(Collectors.toList());
+                .toList();
         return ResponseEntity.ok(devices);
     }
 
@@ -73,5 +53,16 @@ public class DeviceController {
     public ResponseEntity<Void> sendPushToDevice(@Valid @RequestBody DirectPushRequest request) {
         notificationService.sendToDevice(request.deviceId(), request.title(), request.body());
         return ResponseEntity.ok().build();
+    }
+
+    private Platform resolvePlatform(String platformStr) {
+        if (platformStr != null && !platformStr.isBlank()) {
+            try {
+                return Platform.valueOf(platformStr.trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        Platform detected = DeviceDetector.detectPlatform();
+        return detected != null ? detected : Platform.ANDROID;
     }
 }

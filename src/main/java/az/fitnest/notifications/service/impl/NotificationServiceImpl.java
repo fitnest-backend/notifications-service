@@ -3,13 +3,11 @@ package az.fitnest.notifications.service.impl;
 import az.fitnest.notifications.model.enums.NotificationStatus;
 
 import az.fitnest.notifications.grpc.IdentityGrpcClient;
-import az.fitnest.notifications.dto.DeviceRegistrationRequest;
 import az.fitnest.notifications.dto.NotificationDto;
 import az.fitnest.notifications.dto.PushResult;
 import az.fitnest.notifications.mapper.NotificationMapper;
 import az.fitnest.notifications.model.entity.Device;
 import az.fitnest.notifications.model.entity.Notification;
-import az.fitnest.notifications.model.enums.NotificationStatus;
 import az.fitnest.notifications.repository.DeviceRepository;
 import az.fitnest.notifications.repository.NotificationRepository;
 import az.fitnest.notifications.service.LsimSmsService;
@@ -36,7 +34,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -56,7 +53,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     public void sendWelcomeSms(String phoneNumber) {
         String message = "Xidmətimizə xoş gəlmisiniz!";
-        Long transactionId = lsimSmsService.sendSms(phoneNumber, message);
+        lsimSmsService.sendSms(phoneNumber, message);
     }
 
     @Transactional
@@ -64,13 +61,9 @@ public class NotificationServiceImpl implements NotificationService {
         if (platform == null) {
             throw new IllegalArgumentException("Platform must be specified and valid");
         }
-        
+
         Optional<Device> existingDeviceOpt = deviceRepository.findByPushToken(pushToken);
-        boolean notificationEnabled = true;
-        if (existingDeviceOpt.isPresent()) {
-            notificationEnabled = Boolean.TRUE.equals(existingDeviceOpt.get().getNotificationEnabled());
-        }
-        
+
         try {
             Device device;
             if (existingDeviceOpt.isPresent()) {
@@ -78,7 +71,7 @@ public class NotificationServiceImpl implements NotificationService {
                 device.setUserId(userId);
                 device.setPlatform(platform);
                 device.setIsCurrent(true);
-                device.setNotificationEnabled(notificationEnabled);
+                device.setNotificationEnabled(true);
             } else {
                 device = new Device();
                 device.setUserId(userId);
@@ -86,27 +79,14 @@ public class NotificationServiceImpl implements NotificationService {
                 device.setPlatform(platform);
                 device.setCreatedAt(LocalDateTime.now());
                 device.setIsCurrent(true);
-                device.setNotificationEnabled(notificationEnabled);
+                device.setNotificationEnabled(true);
             }
             deviceRepository.save(device);
-            
-            // Deactivate all OTHER devices of this user
-            List<Device> userDevices = deviceRepository.findAllByUserId(userId);
-            for (Device d : userDevices) {
-                if (!d.getPushToken().equals(pushToken)) {
-                    d.setIsCurrent(false);
-                    d.setNotificationEnabled(false);
-                    deviceRepository.save(d);
-                }
-            }
+
+            // Deactivate all other devices in a single query
+            deviceRepository.deactivateOtherDevices(userId, pushToken);
         } catch (DataIntegrityViolationException e) {
             logger.error("Device registration failed for user {}: {}", userId, e.getMessage());
-        }
-        
-        List<Device> afterDevices = deviceRepository.findAllByUserId(userId);
-        long currentCount = afterDevices.stream().filter(Device::getIsCurrent).count();
-        if (currentCount != 1) {
-            logger.warn("After registration, user {} has {} devices marked as current", userId, currentCount);
         }
     }
 
