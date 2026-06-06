@@ -64,6 +64,13 @@ public class NotificationServiceImpl implements NotificationService {
 
         Optional<Device> existingDeviceOpt = deviceRepository.findByPushToken(pushToken);
 
+        // Fetch user's previous current device's notification enabled status to inherit preference
+        boolean notificationEnabled = true;
+        Optional<Device> previousCurrentDeviceOpt = deviceRepository.findFirstByUserIdAndIsCurrentTrue(userId);
+        if (previousCurrentDeviceOpt.isPresent()) {
+            notificationEnabled = Boolean.TRUE.equals(previousCurrentDeviceOpt.get().getNotificationEnabled());
+        }
+
         try {
             Device device;
             if (existingDeviceOpt.isPresent()) {
@@ -71,7 +78,7 @@ public class NotificationServiceImpl implements NotificationService {
                 device.setUserId(userId);
                 device.setPlatform(platform);
                 device.setIsCurrent(true);
-                device.setNotificationEnabled(true);
+                device.setNotificationEnabled(notificationEnabled);
             } else {
                 device = new Device();
                 device.setUserId(userId);
@@ -79,7 +86,7 @@ public class NotificationServiceImpl implements NotificationService {
                 device.setPlatform(platform);
                 device.setCreatedAt(LocalDateTime.now());
                 device.setIsCurrent(true);
-                device.setNotificationEnabled(true);
+                device.setNotificationEnabled(notificationEnabled);
             }
             deviceRepository.save(device);
 
