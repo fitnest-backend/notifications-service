@@ -29,7 +29,6 @@ public class NotificationConsumer {
 
     @KafkaListener(topics = "notification-events", groupId = "notifications-group")
     public void consumeNotification(NotificationEvent event) {
-        log.info("Received Kafka message for recipient: {}, type: {}", event.getRecipient(), event.getType());
         log.info("Consumed notification event: {}, type: {}, recipient: {}",
                 event.getEventId(), event.getType(), event.getRecipient());
 
