@@ -48,6 +48,11 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final Optional<FirebaseMessaging> firebaseMessaging;
     private final IdentityGrpcClient identityGrpcClient;
+    private final java.util.concurrent.Executor taskExecutor;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private NotificationServiceImpl self;
 
     public void sendWelcomeSms(String phoneNumber) {
         String message = "Xidmətimizə xoş gəlmisiniz!";
@@ -105,6 +110,7 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
+    @Transactional
     public PushResult sendPushToUser(Long userId, String title, String body, Map<String, String> data) {
         if (firebaseMessaging.isEmpty()) {
             logger.warn("Firebase is not initialized. Cannot send push notification to user: {}", userId);
@@ -251,16 +257,20 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    @Transactional
     public List<PushResult> sendPushToUsers(List<Long> userIds, String title, String body, Map<String, String> data) {
         if (userIds == null || userIds.isEmpty()) {
             return Collections.emptyList();
         }
-        List<PushResult> results = new ArrayList<>();
-        for (Long userId : userIds) {
-            results.add(sendPushToUser(userId, title, body, data));
-        }
-        return results;
+        List<java.util.concurrent.CompletableFuture<PushResult>> futures = userIds.stream()
+                .map(userId -> java.util.concurrent.CompletableFuture.supplyAsync(
+                        () -> self.sendPushToUser(userId, title, body, data), taskExecutor))
+                .toList();
+
+        java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+
+        return futures.stream()
+                .map(java.util.concurrent.CompletableFuture::join)
+                .toList();
     }
 
     @Transactional
