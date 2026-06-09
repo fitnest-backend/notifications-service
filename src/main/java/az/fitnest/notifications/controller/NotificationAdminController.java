@@ -40,6 +40,12 @@ public class NotificationAdminController {
         return ResponseEntity.ok(notificationService.sendPushToUsers(request.userIds(), request.title(), request.body(), request.data()));
     }
 
+    @Operation(summary = "Xüsusi istifadəçiyə bildiriş göndərin (Admin)", description = "Seçilmiş bir istifadəçiyə push bildirişi göndərir.")
+    @PostMapping("/send")
+    public ResponseEntity<az.fitnest.notifications.dto.PushResult> sendPushToSingleUser(@Valid @RequestBody az.fitnest.notifications.dto.SingleUserPushRequest request) {
+        return ResponseEntity.ok(notificationService.sendPushToUser(request.userId(), request.title(), request.body(), request.data()));
+    }
+
     @Operation(summary = "Çoxlu alıcıya SMS göndərin (Admin)", description = "Verilmiş nömrələr siyahısına eyni məzmunlu SMS göndərir.")
     @PostMapping("/sms/bulk")
     public ResponseEntity<java.util.List<az.fitnest.notifications.dto.SendSmsResponse>> sendBulkSms(@Valid @RequestBody az.fitnest.notifications.dto.BulkSmsRequest request) {
