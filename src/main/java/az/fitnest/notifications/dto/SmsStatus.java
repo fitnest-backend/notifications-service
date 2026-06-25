@@ -4,17 +4,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum SmsStatus {
-    SENT(100, "Sent"),
-    ERROR(101, "Error"),
-    STATUS(102, "Status"),
+    IN_QUEUE(100, "In queue"),
+    DELIVERED(101, "Delivered"),
+    UNDELIVERED(102, "Undelivered"),
     EXPIRED(103, "Expired"),
-    BLACK_LIST(104, "Black list"),
-    IN_QUEUE(105, "In queue"),
-    REJECTED(106, "Rejected"),
-    DELIVERED(107, "Delivered"),
-    CANCELLED(108, "Cancelled"),
-    UNDELIVERED(109, "Undelivered"),
-    UNKNOWN(110, "Unknown (contact us)");
+    REJECTED(104, "Rejected"),
+    CANCELLED(105, "Cancelled"),
+    ERROR(106, "Error"),
+    UNKNOWN(107, "Unknown"),
+    SENT(108, "Sent"),
+    BLACK_LIST(109, "Black list");
 
     private static final Map<Integer, SmsStatus> CODE_MAP = new HashMap<>();
 

@@ -5,18 +5,18 @@ import java.util.Map;
 
 public enum LsimErrorCode {
 
-    NO_HOST(-100, "no host"),
-    INVALID_KEY(-101, "invalid key"),
-    INVALID_HASH(-102, "invalid hash"),
-    INTERNAL_ERROR(-103, "internal error"),
-    INSUFFICIENT_BALANCE(-104, "insufficient balance"),
-    NUMBER_IN_BLACKLIST(-105, "number in black list"),
-    INVALID_SENDER_NAME(-106, "invalid sender name"),
-    INVALID_TRANSACTION_ID(-107, "invalid transaction id"),
-    WRONG_NUMBER_FORMAT(-108, "wrong number format"),
-    REPORTING_LIMIT_EXCEED(-109, "reporting limit exceed"),
-    IP_NOT_ALLOWED(-110, "IP address not allowed"),
-    TEXT_TOO_LONG(-500, "text more than allowed length");
+    INVALID_KEY(-100, "Invalid key"),
+    TEXT_TOO_LONG(-101, "Text more than allowed length"),
+    WRONG_NUMBER_FORMAT(-102, "Wrong number format"),
+    INVALID_SENDER_NAME(-103, "Invalid sender name"),
+    INSUFFICIENT_BALANCE(-104, "Insufficient balance"),
+    NUMBER_IN_BLACKLIST(-105, "Number in black list"),
+    INVALID_TRANSACTION_ID(-106, "Invalid transaction id"),
+    IP_NOT_ALLOWED(-107, "IP address not allowed"),
+    INVALID_HASH(-108, "Invalid hash"),
+    NO_HOST(-109, "No host"),
+    REPORTING_LIMIT_EXCEED(-110, "Reporting limit exceeded"),
+    INTERNAL_ERROR(-500, "Internal error");
 
     private static final Map<Integer, LsimErrorCode> CODE_MAP = new HashMap<>();
 
