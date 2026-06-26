@@ -21,6 +21,36 @@ public class NotificationConsumer {
     private final EmailService emailService;
     private final LsimSmsService smsService;
     private final NotificationService notificationService;
+    private final az.fitnest.notifications.repository.DeviceRepository deviceRepository;
+    private final az.fitnest.notifications.repository.NotificationRepository notificationRepository;
+
+    @KafkaListener(topics = "user-events", groupId = "notifications-user-events-group", properties = {"spring.json.value.default.type=java.util.Map"})
+    @org.springframework.transaction.annotation.Transactional
+    public void consumeUserEvent(Map<String, Object> event) {
+        String eventType = (String) event.get("eventType");
+        Object userIdObj = event.get("userId");
+        if ("USER_HARD_DELETED".equals(eventType) && userIdObj != null) {
+            Long userId = parseUserId(userIdObj);
+            if (userId != null) {
+                log.warn("Received USER_HARD_DELETED event for userId: {}. Deleting user devices and notifications.", userId);
+                deviceRepository.deleteByUserId(userId);
+                notificationRepository.deleteAllByUserId(userId);
+            }
+        }
+    }
+
+    private Long parseUserId(Object obj) {
+        if (obj instanceof Number) {
+            return ((Number) obj).longValue();
+        } else if (obj instanceof String) {
+            try {
+                return Long.parseLong((String) obj);
+            } catch (NumberFormatException e) {
+                log.error("Failed to parse userId from string: {}", obj);
+            }
+        }
+        return null;
+    }
 
     @jakarta.annotation.PostConstruct
     public void init() {
