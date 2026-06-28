@@ -57,7 +57,10 @@ public class NotificationConsumer {
         log.info("NotificationConsumer initialized and listening to 'notification-events' topic.");
     }
 
-    @KafkaListener(topics = "notification-events", groupId = "notifications-group")
+    @KafkaListener(topics = "notification-events", groupId = "notifications-group", properties = {
+            "spring.json.value.default.type=az.fitnest.notifications.messaging.NotificationEvent",
+            "spring.json.use.type.headers=false"
+    })
     public void consumeNotification(NotificationEvent event) {
         log.info("Consumed notification event: {}, type: {}, recipient: {}",
                 event.getEventId(), event.getType(), event.getRecipient());
