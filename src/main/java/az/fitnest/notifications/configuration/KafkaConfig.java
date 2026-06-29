@@ -33,8 +33,7 @@ public class KafkaConfig {
         props.put(JacksonJsonDeserializer.VALUE_DEFAULT_TYPE, "az.fitnest.notifications.messaging.NotificationEvent");
         props.put(JacksonJsonDeserializer.USE_TYPE_INFO_HEADERS, false);
 
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(),
-                new JacksonJsonDeserializer<>(NotificationEvent.class, false));
+        return new DefaultKafkaConsumerFactory<>(props);
     }
 
     @Bean
