@@ -244,20 +244,35 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
+    /** Number of users pushed concurrently per batch. Keeps in-flight tasks below the
+     *  executor's capacity so large bulk sends (hundreds of users) never overwhelm the pool. */
+    private static final int PUSH_BATCH_SIZE = 50;
+
     public List<PushResult> sendPushToUsers(List<Long> userIds, String title, String body, Map<String, String> data) {
         if (userIds == null || userIds.isEmpty()) {
             return Collections.emptyList();
         }
-        List<java.util.concurrent.CompletableFuture<PushResult>> futures = userIds.stream()
-                .map(userId -> java.util.concurrent.CompletableFuture.supplyAsync(
-                        () -> self.sendPushToUser(userId, title, body, data), taskExecutor))
-                .toList();
 
-        java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+        List<PushResult> results = new java.util.ArrayList<>(userIds.size());
 
-        return futures.stream()
-                .map(java.util.concurrent.CompletableFuture::join)
-                .toList();
+        // Process the recipients in bounded batches ("part by part") so we never submit more
+        // tasks at once than the async pool can absorb. Each batch is dispatched concurrently
+        // and fully awaited before the next batch starts.
+        for (int start = 0; start < userIds.size(); start += PUSH_BATCH_SIZE) {
+            int end = Math.min(start + PUSH_BATCH_SIZE, userIds.size());
+            List<Long> batch = userIds.subList(start, end);
+
+            List<java.util.concurrent.CompletableFuture<PushResult>> futures = batch.stream()
+                    .map(userId -> java.util.concurrent.CompletableFuture.supplyAsync(
+                            () -> self.sendPushToUser(userId, title, body, data), taskExecutor))
+                    .toList();
+
+            java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+
+            futures.forEach(future -> results.add(future.join()));
+        }
+
+        return results;
     }
 
     @Transactional
