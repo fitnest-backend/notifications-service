@@ -28,10 +28,10 @@ public class Notification extends BaseAuditableEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "title", nullable = false)
+    @Column(name = "title", nullable = false, columnDefinition = "TEXT")
     private String title;
 
-    @Column(name = "body", nullable = false)
+    @Column(name = "body", nullable = false, columnDefinition = "TEXT")
     private String body;
 
     @Column(name = "is_read", nullable = false)
@@ -47,6 +47,6 @@ public class Notification extends BaseAuditableEntity {
     @Column(name = "failed_count", nullable = false)
     private int failedCount = 0;
 
-    @Column(name = "failure_reason")
+    @Column(name = "failure_reason", columnDefinition = "TEXT")
     private String failureReason;
 }
