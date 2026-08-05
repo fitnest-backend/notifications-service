@@ -225,3 +225,11 @@ grpc:
       certificate-chain: ${GRPC_SERVER_CERT:}
       private-key: ${GRPC_SERVER_KEY:}
       trust-cert-collection: ${GRPC_TRUST_CERT:}
+  client:
+    identity-backend:
+      address: ${IDENTITY_BACKEND_GRPC_ADDRESS:dns:///identity-backend:9090}
+      negotiation-type: plaintext
+      enable-keep-alive: true
+      keep-alive-time: 30s
+      keep-alive-without-calls: true
+      deadline-after: 10s

@@ -16,7 +16,16 @@ service UserService {
   rpc UpdateLanguage(UpdateLanguageRequest) returns (UserResponse);
   rpc DeactivateUser(DeactivateUserRequest) returns (google.protobuf.Empty);
   rpc UpdateSessionStatus(UpdateSessionStatusRequest) returns (UserResponse);
+  rpc GetUsersByIds(GetUsersByIdsRequest) returns (GetUsersByIdsResponse);
   rpc GetActiveUsersWithLanguage(GetActiveUsersWithLanguageRequest) returns (GetActiveUsersWithLanguageResponse);
+}
+
+message GetUsersByIdsRequest {
+  repeated int64 user_ids = 1;
+}
+
+message GetUsersByIdsResponse {
+  repeated UserResponse users = 1;
 }
 
 message GetActiveUsersWithLanguageRequest {
@@ -51,6 +60,7 @@ message UserResponse {
   bool account_locked = 12;
   string session_status = 13;
   bool has_local_password = 14;
+  string role = 15;
 }
 
 message UpdateUserProfileRequest {

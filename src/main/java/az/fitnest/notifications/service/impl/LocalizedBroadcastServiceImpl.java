@@ -46,35 +46,29 @@ public class LocalizedBroadcastServiceImpl implements LocalizedBroadcastService 
         LocalizedContent fallback = normalizedContents.getOrDefault("AZ",
                 normalizedContents.values().iterator().next());
 
-        List<IdentityGrpcClient.ActiveUserLanguageDto> users;
-        try {
-            users = identityGrpcClient.getActiveUsersWithLanguage(roleNames);
-        } catch (Exception e) {
-            logger.error("Failed to fetch users for localized broadcast: {}", e.getMessage(), e);
-            return 0;
-        }
-
-        if (users.isEmpty()) {
-            return 0;
-        }
-
-        Set<Long> pushEligibleUserIds = new HashSet<>(deviceRepository.findUserIdsWithActivePushEnabled());
+        // Device-first: only users who can actually receive push
+        List<Long> pushEligibleUserIds = deviceRepository.findUserIdsWithActivePushEnabled();
         if (pushEligibleUserIds.isEmpty()) {
             logger.info("Localized broadcast skipped: no users with active push-enabled devices");
             return 0;
         }
 
+        Set<String> allowedRoles = normalizeRoles(roleNames);
+        Map<Long, IdentityGrpcClient.UserLanguageDto> userMeta =
+                identityGrpcClient.getUsersLanguageByIds(pushEligibleUserIds);
+
         Map<String, List<Long>> userIdsByLanguage = new HashMap<>();
-        for (IdentityGrpcClient.ActiveUserLanguageDto user : users) {
-            if (!pushEligibleUserIds.contains(user.userId())) {
+        for (Long userId : pushEligibleUserIds) {
+            IdentityGrpcClient.UserLanguageDto meta = userMeta.get(userId);
+            if (meta != null && !allowedRoles.isEmpty() && !isAllowedRole(meta.role(), allowedRoles)) {
                 continue;
             }
-            String lang = normalizeLanguage(user.language());
-            userIdsByLanguage.computeIfAbsent(lang, key -> new ArrayList<>()).add(user.userId());
+            String lang = normalizeLanguage(meta != null ? meta.language() : null);
+            userIdsByLanguage.computeIfAbsent(lang, key -> new ArrayList<>()).add(userId);
         }
 
         if (userIdsByLanguage.isEmpty()) {
-            logger.info("Localized broadcast skipped: no role overlap with push-enabled devices");
+            logger.info("Localized broadcast skipped: no eligible users after role filter");
             return 0;
         }
 
@@ -91,6 +85,27 @@ public class LocalizedBroadcastServiceImpl implements LocalizedBroadcastService 
         logger.info("Localized broadcast completed for {} push-eligible users across {} language groups",
                 targetUsers, userIdsByLanguage.size());
         return targetUsers;
+    }
+
+    private static Set<String> normalizeRoles(List<String> roleNames) {
+        if (roleNames == null || roleNames.isEmpty()) {
+            return Set.of("ROLE_USER");
+        }
+        Set<String> roles = new HashSet<>();
+        for (String role : roleNames) {
+            if (role != null && !role.isBlank()) {
+                roles.add(role.trim().toUpperCase(Locale.ROOT));
+            }
+        }
+        return roles.isEmpty() ? Set.of("ROLE_USER") : roles;
+    }
+
+    private static boolean isAllowedRole(String role, Set<String> allowedRoles) {
+        if (role == null || role.isBlank()) {
+            // Identity may omit role on older payloads — keep device-registered users
+            return true;
+        }
+        return allowedRoles.contains(role.trim().toUpperCase(Locale.ROOT));
     }
 
     private static String normalizeLanguage(String language) {
