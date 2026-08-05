@@ -12,6 +12,7 @@ service NotificationsService {
   rpc SendSimpleEmail (SendSimpleEmailRequest) returns (SendEmailResponse);
   rpc SendPushNotification (SendPushNotificationRequest) returns (SendPushNotificationResponse);
   rpc BroadcastLocalizedPushNotification (BroadcastLocalizedPushRequest) returns (BroadcastLocalizedPushResponse);
+  rpc NotifyNewGym (NotifyNewGymRequest) returns (NotifyNewGymResponse);
   rpc GetNotifications (GetNotificationsRequest) returns (GetNotificationsResponse);
   rpc SetUserNotificationPreference (SetUserNotificationPreferenceRequest) returns (SetUserNotificationPreferenceResponse);
   rpc GetDevicesByUserId (GetDevicesByUserIdRequest) returns (GetDevicesByUserIdResponse);
@@ -61,6 +62,17 @@ message BroadcastLocalizedPushRequest {
 }
 
 message BroadcastLocalizedPushResponse {
+  bool success = 1;
+  string error_message = 2;
+  int32 target_users = 3;
+}
+
+message NotifyNewGymRequest {
+  int64 gym_id = 1;
+  string gym_name = 2;
+}
+
+message NotifyNewGymResponse {
   bool success = 1;
   string error_message = 2;
   int32 target_users = 3;

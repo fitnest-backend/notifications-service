@@ -173,6 +173,28 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
     }
 
     @Override
+    public void notifyNewGym(NotifyNewGymRequest request, StreamObserver<NotifyNewGymResponse> responseObserver) {
+        try {
+            int targetUsers = notificationService.notifyNewGym(request.getGymId(), request.getGymName());
+            NotifyNewGymResponse response = NotifyNewGymResponse.newBuilder()
+                    .setSuccess(true)
+                    .setTargetUsers(targetUsers)
+                    .build();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            logger.error("NotifyNewGym failed for gymId={}: {}", request.getGymId(), e.getMessage(), e);
+            NotifyNewGymResponse response = NotifyNewGymResponse.newBuilder()
+                    .setSuccess(false)
+                    .setErrorMessage(e.getMessage() != null ? e.getMessage() : "Unknown error")
+                    .setTargetUsers(0)
+                    .build();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+    }
+
+    @Override
     public void getNotifications(GetNotificationsRequest request, StreamObserver<GetNotificationsResponse> responseObserver) {
         try {
             Long userId = request.getUserId();

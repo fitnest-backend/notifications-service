@@ -28,6 +28,12 @@ public interface NotificationService {
                                            Map<String, String> data,
                                            java.util.List<String> roleNames);
 
+    /**
+     * FR-27: notify ROLE_USER recipients (with push-enabled current devices) about a new Active gym.
+     * Owns localized title/body templates.
+     */
+    int notifyNewGym(Long gymId, String gymName);
+
     java.util.List<PushResult> sendPushToUsers(java.util.List<Long> userIds, String title, String body, Map<String, String> data);
 
     record LocalizedPushContent(String title, String body) {

@@ -301,6 +301,32 @@ public class NotificationServiceImpl implements NotificationService {
         return targetUsers;
     }
 
+    @Override
+    public int notifyNewGym(Long gymId, String gymName) {
+        String name = gymName != null ? gymName.trim() : "";
+        String gymIdStr = gymId != null ? gymId.toString() : "";
+
+        Map<String, LocalizedPushContent> contents = Map.of(
+                "AZ", new LocalizedPushContent(
+                        "Yeni idman zalı əlavə edildi",
+                        String.format("Yeni tərəfdaşımız %s artıq FitNest-dədir. Ətraflı məlumat üçün toxunun.", name)),
+                "EN", new LocalizedPushContent(
+                        "New gym added",
+                        String.format("Our new partner %s is now on FitNest. Tap to learn more.", name)),
+                "RU", new LocalizedPushContent(
+                        "Добавлен новый зал",
+                        String.format("Наш новый партнёр %s теперь в FitNest. Нажмите, чтобы узнать больше.", name))
+        );
+
+        Map<String, String> data = new HashMap<>();
+        data.put("type", "NEW_GYM");
+        if (!gymIdStr.isEmpty()) {
+            data.put("gymId", gymIdStr);
+        }
+
+        return broadcastLocalizedPushNotification(contents, data, List.of("ROLE_USER"));
+    }
+
     private String normalizeLanguage(String language) {
         if (language == null || language.isBlank()) {
             return "AZ";
