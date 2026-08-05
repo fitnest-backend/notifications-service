@@ -21,6 +21,7 @@ public class NotificationConsumer {
     private final EmailService emailService;
     private final LsimSmsService smsService;
     private final NotificationService notificationService;
+    private final az.fitnest.notifications.service.DeviceRegistrationService deviceRegistrationService;
     private final az.fitnest.notifications.repository.DeviceRepository deviceRepository;
     private final az.fitnest.notifications.repository.NotificationRepository notificationRepository;
 
@@ -39,7 +40,7 @@ public class NotificationConsumer {
         }
 
         if ("ACCOUNT_DEACTIVATED".equals(eventType) || "ACCOUNT_BLOCKED".equals(eventType)) {
-            int updated = deviceRepository.disableAllDevicesForUser(userId);
+            int updated = deviceRegistrationService.disableAllDevicesForUser(userId);
             log.info("Received {}: disabled {} device(s) for userId={}", eventType, updated, userId);
             return;
         }

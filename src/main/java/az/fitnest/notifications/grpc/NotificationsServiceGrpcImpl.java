@@ -19,6 +19,8 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
     private final LsimSmsService lsimSmsService;
     private final EmailService emailService;
     private final az.fitnest.notifications.service.NotificationService notificationService;
+    private final az.fitnest.notifications.service.NewGymNotificationService newGymNotificationService;
+    private final az.fitnest.notifications.service.LocalizedBroadcastService localizedBroadcastService;
 
     @Override
     public void sendSMS(SendSMSRequest request, StreamObserver<SendSMSResponse> responseObserver) {
@@ -138,18 +140,18 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
     public void broadcastLocalizedPushNotification(BroadcastLocalizedPushRequest request,
                                                    StreamObserver<BroadcastLocalizedPushResponse> responseObserver) {
         try {
-            java.util.Map<String, az.fitnest.notifications.service.NotificationService.LocalizedPushContent> contents =
+            java.util.Map<String, az.fitnest.notifications.service.LocalizedBroadcastService.LocalizedContent> contents =
                     new HashMap<>();
             for (LocalizedPushContent content : request.getContentsList()) {
                 if (content.getLanguage() == null || content.getLanguage().isBlank()) {
                     continue;
                 }
                 contents.put(content.getLanguage(),
-                        new az.fitnest.notifications.service.NotificationService.LocalizedPushContent(
+                        new az.fitnest.notifications.service.LocalizedBroadcastService.LocalizedContent(
                                 content.getTitle(), content.getBody()));
             }
 
-            int targetUsers = notificationService.broadcastLocalizedPushNotification(
+            int targetUsers = localizedBroadcastService.broadcast(
                     contents,
                     request.getDataMap(),
                     request.getRoleNamesList());
@@ -175,7 +177,7 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
     @Override
     public void notifyNewGym(NotifyNewGymRequest request, StreamObserver<NotifyNewGymResponse> responseObserver) {
         try {
-            int targetUsers = notificationService.notifyNewGym(request.getGymId(), request.getGymName());
+            int targetUsers = newGymNotificationService.notifyNewGym(request.getGymId(), request.getGymName());
             NotifyNewGymResponse response = NotifyNewGymResponse.newBuilder()
                     .setSuccess(true)
                     .setTargetUsers(targetUsers)
