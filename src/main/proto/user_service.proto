@@ -16,6 +16,20 @@ service UserService {
   rpc UpdateLanguage(UpdateLanguageRequest) returns (UserResponse);
   rpc DeactivateUser(DeactivateUserRequest) returns (google.protobuf.Empty);
   rpc UpdateSessionStatus(UpdateSessionStatusRequest) returns (UserResponse);
+  rpc GetActiveUsersWithLanguage(GetActiveUsersWithLanguageRequest) returns (GetActiveUsersWithLanguageResponse);
+}
+
+message GetActiveUsersWithLanguageRequest {
+  repeated string role_names = 1;
+}
+
+message ActiveUserLanguage {
+  int64 user_id = 1;
+  string language = 2;
+}
+
+message GetActiveUsersWithLanguageResponse {
+  repeated ActiveUserLanguage users = 1;
 }
 
 message GetUserByIdRequest {

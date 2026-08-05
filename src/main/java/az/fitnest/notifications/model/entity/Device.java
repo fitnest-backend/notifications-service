@@ -11,9 +11,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "devices", indexes = {
-        @Index(name = "idx_devices_user_id", columnList = "user_id")
-}, uniqueConstraints = {
-        @UniqueConstraint(name = "uk_devices_user_device", columnNames = {"user_id", "device_id"})
+        @Index(name = "idx_devices_user_id", columnList = "user_id"),
+        @Index(name = "idx_devices_user_current", columnList = "user_id, is_current")
 })
 @Getter
 @Setter
@@ -29,7 +28,8 @@ public class Device {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "push_token")
+    /** FCM/APNs token — must be unique so one physical device maps to one user. */
+    @Column(name = "push_token", nullable = false, unique = true, length = 512)
     private String pushToken;
 
     @Column(name = "platform", nullable = false)
@@ -39,9 +39,32 @@ public class Device {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     @Column(name = "notification_enabled", nullable = false)
-    private Boolean notificationEnabled = false;
+    private Boolean notificationEnabled = true;
 
     @Column(name = "is_current", nullable = false)
     private Boolean isCurrent = false;
+
+    @PrePersist
+    void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        updatedAt = now;
+        if (notificationEnabled == null) {
+            notificationEnabled = true;
+        }
+        if (isCurrent == null) {
+            isCurrent = false;
+        }
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

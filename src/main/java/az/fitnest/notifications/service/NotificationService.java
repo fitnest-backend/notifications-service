@@ -18,7 +18,20 @@ public interface NotificationService {
 
     void broadcastPushNotification(String title, String body);
 
+    /**
+     * Broadcasts localized in-app (+ push when Firebase is available) notifications
+     * to all users matching the given roles (default ROLE_USER). Title/body are selected per user language.
+     *
+     * @return number of target users
+     */
+    int broadcastLocalizedPushNotification(Map<String, LocalizedPushContent> contentsByLanguage,
+                                           Map<String, String> data,
+                                           java.util.List<String> roleNames);
+
     java.util.List<PushResult> sendPushToUsers(java.util.List<Long> userIds, String title, String body, Map<String, String> data);
+
+    record LocalizedPushContent(String title, String body) {
+    }
 
     void sendPushNotification(String token, String title, String body);
 

@@ -135,6 +135,44 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
     }
 
     @Override
+    public void broadcastLocalizedPushNotification(BroadcastLocalizedPushRequest request,
+                                                   StreamObserver<BroadcastLocalizedPushResponse> responseObserver) {
+        try {
+            java.util.Map<String, az.fitnest.notifications.service.NotificationService.LocalizedPushContent> contents =
+                    new HashMap<>();
+            for (LocalizedPushContent content : request.getContentsList()) {
+                if (content.getLanguage() == null || content.getLanguage().isBlank()) {
+                    continue;
+                }
+                contents.put(content.getLanguage(),
+                        new az.fitnest.notifications.service.NotificationService.LocalizedPushContent(
+                                content.getTitle(), content.getBody()));
+            }
+
+            int targetUsers = notificationService.broadcastLocalizedPushNotification(
+                    contents,
+                    request.getDataMap(),
+                    request.getRoleNamesList());
+
+            BroadcastLocalizedPushResponse response = BroadcastLocalizedPushResponse.newBuilder()
+                    .setSuccess(true)
+                    .setTargetUsers(targetUsers)
+                    .build();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            logger.error("Localized broadcast failed: {}", e.getMessage(), e);
+            BroadcastLocalizedPushResponse response = BroadcastLocalizedPushResponse.newBuilder()
+                    .setSuccess(false)
+                    .setErrorMessage(e.getMessage() != null ? e.getMessage() : "Unknown error")
+                    .setTargetUsers(0)
+                    .build();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+    }
+
+    @Override
     public void getNotifications(GetNotificationsRequest request, StreamObserver<GetNotificationsResponse> responseObserver) {
         try {
             Long userId = request.getUserId();

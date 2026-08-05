@@ -16,13 +16,21 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
 
     Optional<Device> findFirstByUserIdAndIsCurrentTrue(Long userId);
 
-    @Query("SELECT d.pushToken FROM Device d WHERE d.userId = :userId AND d.notificationEnabled = true")
+    Optional<Device> findFirstByUserIdOrderByCreatedAtDesc(Long userId);
+
+    @Query("SELECT d.pushToken FROM Device d WHERE d.userId = :userId AND d.isCurrent = true AND d.notificationEnabled = true")
     List<String> findPushTokensByUserId(@Param("userId") Long userId);
 
-    @Query("SELECT d.pushToken FROM Device d WHERE d.notificationEnabled = true")
+    @Query("SELECT d.pushToken FROM Device d WHERE d.isCurrent = true AND d.notificationEnabled = true")
     List<String> findAllPushTokens();
 
+    @Query("SELECT DISTINCT d.userId FROM Device d WHERE d.isCurrent = true AND d.notificationEnabled = true")
+    List<Long> findUserIdsWithActivePushEnabled();
+
     Optional<Device> findByPushToken(String pushToken);
+
+    @Query("SELECT d FROM Device d WHERE d.pushToken = :pushToken ORDER BY d.createdAt DESC, d.deviceId DESC")
+    List<Device> findAllByPushTokenOrderByNewest(@Param("pushToken") String pushToken);
 
     void deleteByPushToken(String pushToken);
 
@@ -30,7 +38,15 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
 
     long countByUserId(Long userId);
 
-    @Modifying
-    @Query("UPDATE Device d SET d.isCurrent = false, d.notificationEnabled = false WHERE d.userId = :userId AND d.pushToken != :pushToken")
-    void deactivateOtherDevices(@Param("userId") Long userId, @Param("pushToken") String pushToken);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Device d SET d.isCurrent = false, d.notificationEnabled = false WHERE d.userId = :userId AND d.pushToken <> :pushToken")
+    int deactivateOtherDevices(@Param("userId") Long userId, @Param("pushToken") String pushToken);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Device d SET d.isCurrent = false WHERE d.userId = :userId AND d.isCurrent = true")
+    int clearCurrentFlag(@Param("userId") Long userId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Device d SET d.isCurrent = false, d.notificationEnabled = false WHERE d.userId = :userId")
+    int disableAllDevicesForUser(@Param("userId") Long userId);
 }

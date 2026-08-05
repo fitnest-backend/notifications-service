@@ -3,6 +3,7 @@ package az.fitnest.notifications.controller;
 import az.fitnest.notifications.dto.DeviceDto;
 import az.fitnest.notifications.dto.DeviceRegistrationRequest;
 import az.fitnest.notifications.dto.DirectPushRequest;
+import az.fitnest.notifications.exception.ForbiddenException;
 import az.fitnest.notifications.repository.DeviceRepository;
 import az.fitnest.notifications.service.NotificationService;
 import az.fitnest.notifications.util.DeviceDetector;
@@ -13,6 +14,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,20 +42,38 @@ public class DeviceController {
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "İstifadəçinin cihazlarını əldə edin", description = "Verilmiş istifadəçi ID-sinə aid olan bütün cihazları qaytarır.")
+    @Operation(summary = "İstifadəçinin cihazlarını əldə edin", description = "Verilmiş istifadəçi ID-sinə aid olan bütün cihazları qaytarır. Yalnız öz məlumatı və ya ADMIN.")
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<DeviceDto>> getDevicesByUserId(@PathVariable Long userId) {
+    public ResponseEntity<List<DeviceDto>> getDevicesByUserId(
+            @AuthenticationPrincipal Long currentUserId,
+            @PathVariable Long userId,
+            Authentication authentication) {
+        if (!isSelfOrAdmin(currentUserId, userId, authentication)) {
+            throw new ForbiddenException("Access denied");
+        }
         List<DeviceDto> devices = deviceRepository.findAllByUserId(userId).stream()
                 .map(az.fitnest.notifications.mapper.DeviceMapper::toDto)
                 .toList();
         return ResponseEntity.ok(devices);
     }
 
-    @Operation(summary = "Cihaza push bildirişi göndərin", description = "Xüsusi cihaza push bildirişi göndərir.")
+    @Operation(summary = "Cihaza push bildirişi göndərin", description = "Xüsusi cihaza push bildirişi göndərir (ADMIN).")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/send")
     public ResponseEntity<Void> sendPushToDevice(@Valid @RequestBody DirectPushRequest request) {
         notificationService.sendToDevice(request.deviceId(), request.title(), request.body());
         return ResponseEntity.ok().build();
+    }
+
+    private boolean isSelfOrAdmin(Long currentUserId, Long targetUserId, Authentication authentication) {
+        if (currentUserId != null && currentUserId.equals(targetUserId)) {
+            return true;
+        }
+        if (authentication == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 
     private Platform resolvePlatform(String platformStr) {

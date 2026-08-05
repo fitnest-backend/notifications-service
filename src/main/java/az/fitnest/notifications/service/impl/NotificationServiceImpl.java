@@ -25,13 +25,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import az.fitnest.notifications.exception.BadRequestException;
 import az.fitnest.notifications.exception.ResourceNotFoundException;
 import az.fitnest.notifications.model.enums.Platform;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -39,6 +41,13 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
     private static final Logger logger = LoggerFactory.getLogger(NotificationServiceImpl.class);
+
+    /** Number of users pushed concurrently per batch. Keeps in-flight tasks below the
+     *  executor's capacity so large bulk sends (hundreds of users) never overwhelm the pool. */
+    private static final int PUSH_BATCH_SIZE = 50;
+
+    /** FCM multicast hard limit. */
+    private static final int FCM_MULTICAST_LIMIT = 500;
 
     private final LsimSmsService lsimSmsService;
     private final DeviceRepository deviceRepository;
@@ -58,13 +67,19 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Transactional
     public void registerDevice(Long userId, String pushToken, Platform platform) {
+        if (userId == null) {
+            throw new BadRequestException("User id is required");
+        }
         if (platform == null) {
-            throw new IllegalArgumentException("Platform must be specified and valid");
+            throw new BadRequestException("Platform must be specified and valid");
+        }
+        if (pushToken == null || pushToken.isBlank()) {
+            throw new BadRequestException("Push token must not be blank");
         }
 
-        Optional<Device> existingDeviceOpt = deviceRepository.findByPushToken(pushToken);
+        final String token = pushToken.trim();
 
-        // Fetch user's previous current device's notification enabled status to inherit preference
+        // Inherit preference from this user's current device (first register → enabled)
         boolean notificationEnabled = true;
         Optional<Device> previousCurrentDeviceOpt = deviceRepository.findFirstByUserIdAndIsCurrentTrue(userId);
         if (previousCurrentDeviceOpt.isPresent()) {
@@ -72,29 +87,80 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         try {
-            Device device;
-            if (existingDeviceOpt.isPresent()) {
-                device = existingDeviceOpt.get();
-                device.setUserId(userId);
-                device.setPlatform(platform);
-                device.setIsCurrent(true);
-                device.setNotificationEnabled(notificationEnabled);
-            } else {
-                device = new Device();
-                device.setUserId(userId);
-                device.setPushToken(pushToken);
-                device.setPlatform(platform);
-                device.setCreatedAt(LocalDateTime.now());
-                device.setIsCurrent(true);
-                device.setNotificationEnabled(notificationEnabled);
+            upsertCurrentDevice(userId, token, platform, notificationEnabled);
+        } catch (DataIntegrityViolationException first) {
+            // Concurrent insert of the same token — retry once as an update of the winning row
+            logger.warn("Device registration race for user {}, retrying upsert: {}", userId, first.getMessage());
+            try {
+                upsertCurrentDevice(userId, token, platform, notificationEnabled);
+            } catch (DataIntegrityViolationException second) {
+                logger.error("Device registration failed for user {} after retry: {}", userId, second.getMessage());
+                throw new BadRequestException("Device registration failed; please retry");
             }
-            deviceRepository.save(device);
-
-            // Deactivate all other devices in a single query
-            deviceRepository.deactivateOtherDevices(userId, pushToken);
-        } catch (DataIntegrityViolationException e) {
-            logger.error("Device registration failed for user {}: {}", userId, e.getMessage());
         }
+    }
+
+    private void upsertCurrentDevice(Long userId, String token, Platform platform, boolean notificationEnabled) {
+        Device device = resolveCanonicalDeviceByToken(token);
+        Long previousOwnerId = null;
+
+        if (device != null) {
+            if (!userId.equals(device.getUserId())) {
+                previousOwnerId = device.getUserId();
+            }
+            device.setUserId(userId);
+            device.setPlatform(platform);
+            device.setIsCurrent(true);
+            device.setNotificationEnabled(notificationEnabled);
+        } else {
+            device = new Device();
+            device.setUserId(userId);
+            device.setPushToken(token);
+            device.setPlatform(platform);
+            device.setIsCurrent(true);
+            device.setNotificationEnabled(notificationEnabled);
+        }
+
+        deviceRepository.saveAndFlush(device);
+        deviceRepository.deactivateOtherDevices(userId, token);
+
+        if (previousOwnerId != null) {
+            restoreCurrentDeviceForUser(previousOwnerId);
+        }
+    }
+
+    /**
+     * Returns the newest row for a token and hard-deletes any duplicate rows.
+     */
+    private Device resolveCanonicalDeviceByToken(String token) {
+        List<Device> matches = deviceRepository.findAllByPushTokenOrderByNewest(token);
+        if (matches.isEmpty()) {
+            return null;
+        }
+        Device canonical = matches.get(0);
+        for (int i = 1; i < matches.size(); i++) {
+            deviceRepository.delete(matches.get(i));
+        }
+        if (matches.size() > 1) {
+            deviceRepository.flush();
+            logger.warn("Deduped {} duplicate device row(s) for push token {}", matches.size() - 1, maskToken(token));
+        }
+        return canonical;
+    }
+
+    /**
+     * After a token moves to another user, ensure the previous owner still has a current device
+     * if they have remaining rows (without forcibly re-enabling notifications).
+     */
+    private void restoreCurrentDeviceForUser(Long previousOwnerId) {
+        if (deviceRepository.findFirstByUserIdAndIsCurrentTrue(previousOwnerId).isPresent()) {
+            return;
+        }
+        deviceRepository.findFirstByUserIdOrderByCreatedAtDesc(previousOwnerId).ifPresent(device -> {
+            device.setIsCurrent(true);
+            deviceRepository.save(device);
+            logger.info("Promoted device {} as current for previous owner {}", device.getDeviceId(), previousOwnerId);
+        });
     }
 
     @Transactional
@@ -122,70 +188,21 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         Map<String, String> payload = data != null ? data : Collections.emptyMap();
+        MulticastSendResult sendResult = sendMulticastInChunks(tokens, title, body, payload);
 
-        MulticastMessage message = MulticastMessage.builder()
-                .addAllTokens(tokens)
-                .setNotification(com.google.firebase.messaging.Notification.builder()
-                        .setTitle(title)
-                        .setBody(body)
-                        .build())
-                .putAllData(payload)
-                .setAndroidConfig(AndroidConfig.builder()
-                        .setPriority(AndroidConfig.Priority.HIGH)
-                        .setNotification(AndroidNotification.builder()
-                                .setDefaultSound(true)
-                                .setDefaultVibrateTimings(true)
-                                .build())
-                        .build())
-                .setApnsConfig(ApnsConfig.builder()
-                        .setAps(Aps.builder()
-                                .setSound("default")
-                                .setBadge(1)
-                                .setContentAvailable(true)
-                                .build())
-                        .build())
-                .build();
-
-        int sentCount = 0;
-        int failedCount = 0;
-        List<String> failedTokensToRemove = new ArrayList<>();
-        String failureReason = null;
-
-        try {
-            BatchResponse response = firebaseMessaging.get().sendEachForMulticast(message);
-            sentCount = response.getSuccessCount();
-            failedCount = response.getFailureCount();
-
-            if (failedCount > 0) {
-                List<SendResponse> responses = response.getResponses();
-                for (int i = 0; i < responses.size(); i++) {
-                    SendResponse sendResponse = responses.get(i);
-                    if (!sendResponse.isSuccessful()) {
-                        FirebaseMessagingException e = sendResponse.getException();
-                        String errorCode = e.getMessagingErrorCode().name();
-
-                        if ("UNREGISTERED".equals(errorCode) || "INVALID_ARGUMENT".equals(errorCode)) {
-                            failedTokensToRemove.add(tokens.get(i));
-                        }
-                    }
-                }
-            }
-        } catch (FirebaseMessagingException e) {
-            failedCount = tokens.size();
-            failureReason = e.getMessage();
-        } catch (Exception e) {
-            failedCount = tokens.size();
-            failureReason = e.getMessage();
-        }
-
-        int removedTokens = failedTokensToRemove.size();
-        cleanupTokensAndUpdateStatus(userId, notificationId, failedTokensToRemove, sentCount, failedCount, failureReason);
+        cleanupTokensAndUpdateStatus(
+                userId,
+                notificationId,
+                sendResult.staleTokens(),
+                sendResult.sentCount(),
+                sendResult.failedCount(),
+                sendResult.failureReason());
 
         return PushResult.builder()
                 .notificationId(notificationId)
-                .sentCount(sentCount)
-                .failedCount(failedCount)
-                .removedTokens(removedTokens)
+                .sentCount(sendResult.sentCount())
+                .failedCount(sendResult.failedCount())
+                .removedTokens(sendResult.staleTokens().size())
                 .build();
     }
 
@@ -196,57 +213,154 @@ public class NotificationServiceImpl implements NotificationService {
             return;
         }
 
+        List<Long> userIds = deviceRepository.findUserIdsWithActivePushEnabled();
+        for (Long userIdForNotification : userIds) {
+            savePendingNotification(userIdForNotification, title, body);
+        }
+
         List<String> tokens = deviceRepository.findAllPushTokens();
         if (tokens.isEmpty()) {
             return;
         }
 
-        Map<String, String> payload = Collections.emptyMap();
+        MulticastSendResult sendResult = sendMulticastInChunks(tokens, title, body, Collections.emptyMap());
+        if (!sendResult.staleTokens().isEmpty()) {
+            for (String staleToken : sendResult.staleTokens()) {
+                deviceRepository.deleteByPushToken(staleToken);
+            }
+            logger.info("Broadcast removed {} stale push token(s)", sendResult.staleTokens().size());
+        }
+        logger.info("Broadcast finished: sent={}, failed={}, users={}",
+                sendResult.sentCount(), sendResult.failedCount(), userIds.size());
+    }
 
-        List<Long> userIds = deviceRepository.findAll().stream()
-                .map(Device::getUserId)
-                .distinct()
-                .toList();
-
-        for (Long userIdForNotification : userIds) {
-            savePendingNotification(userIdForNotification, title, body);
+    @Override
+    public int broadcastLocalizedPushNotification(Map<String, LocalizedPushContent> contentsByLanguage,
+                                                  Map<String, String> data,
+                                                  List<String> roleNames) {
+        if (contentsByLanguage == null || contentsByLanguage.isEmpty()) {
+            logger.warn("Localized broadcast skipped: no contents provided");
+            return 0;
         }
 
-        MulticastMessage message = MulticastMessage.builder()
-                .addAllTokens(tokens)
-                .setNotification(com.google.firebase.messaging.Notification.builder()
-                        .setTitle(title)
-                        .setBody(body)
-                        .build())
-                .putAllData(payload)
-                .setAndroidConfig(AndroidConfig.builder()
-                        .setPriority(AndroidConfig.Priority.HIGH)
-                        .setNotification(AndroidNotification.builder()
-                                .setDefaultSound(true)
-                                .setDefaultVibrateTimings(true)
-                                .build())
-                        .build())
-                .setApnsConfig(ApnsConfig.builder()
-                        .setAps(Aps.builder()
-                                .setSound("default")
-                                .setBadge(1)
-                                .setContentAvailable(true)
-                                .build())
-                        .build())
-                .build();
+        Map<String, LocalizedPushContent> normalizedContents = new HashMap<>();
+        contentsByLanguage.forEach((lang, content) -> {
+            if (lang != null && content != null) {
+                normalizedContents.put(lang.trim().toUpperCase(Locale.ROOT), content);
+            }
+        });
 
+        LocalizedPushContent fallback = normalizedContents.getOrDefault("AZ",
+                normalizedContents.values().iterator().next());
+
+        List<IdentityGrpcClient.ActiveUserLanguageDto> users;
         try {
-            BatchResponse response = firebaseMessaging.get().sendEachForMulticast(message);
-        } catch (FirebaseMessagingException e) {
-            logger.error("Firebase messaging error during broadcast: {}", e.getMessage(), e);
+            users = identityGrpcClient.getActiveUsersWithLanguage(roleNames);
         } catch (Exception e) {
-            logger.error("Unexpected error during broadcast push notification: {}", e.getMessage(), e);
+            logger.error("Failed to fetch active users for localized broadcast: {}", e.getMessage(), e);
+            return 0;
+        }
+
+        if (users.isEmpty()) {
+            return 0;
+        }
+
+        // Only users with a current device + notifications enabled receive the fan-out
+        java.util.Set<Long> pushEligibleUserIds = new java.util.HashSet<>(
+                deviceRepository.findUserIdsWithActivePushEnabled());
+        if (pushEligibleUserIds.isEmpty()) {
+            logger.info("Localized broadcast skipped: no users with active push-enabled devices");
+            return 0;
+        }
+
+        Map<String, List<Long>> userIdsByLanguage = new HashMap<>();
+        for (IdentityGrpcClient.ActiveUserLanguageDto user : users) {
+            if (!pushEligibleUserIds.contains(user.userId())) {
+                continue;
+            }
+            String lang = normalizeLanguage(user.language());
+            userIdsByLanguage.computeIfAbsent(lang, key -> new ArrayList<>()).add(user.userId());
+        }
+
+        if (userIdsByLanguage.isEmpty()) {
+            logger.info("Localized broadcast skipped: no ROLE_USER overlap with push-enabled devices");
+            return 0;
+        }
+
+        Map<String, String> payload = data != null ? data : Collections.emptyMap();
+        int targetUsers = 0;
+
+        for (Map.Entry<String, List<Long>> entry : userIdsByLanguage.entrySet()) {
+            LocalizedPushContent content = normalizedContents.getOrDefault(entry.getKey(), fallback);
+            deliverToUsersWithoutSessionGate(entry.getValue(), content.title(), content.body(), payload);
+            targetUsers += entry.getValue().size();
+        }
+
+        logger.info("Localized broadcast completed for {} push-eligible users across {} language groups",
+                targetUsers, userIdsByLanguage.size());
+        return targetUsers;
+    }
+
+    private String normalizeLanguage(String language) {
+        if (language == null || language.isBlank()) {
+            return "AZ";
+        }
+        String normalized = language.trim().toUpperCase(Locale.ROOT);
+        if ("EN".equals(normalized) || "RU".equals(normalized) || "AZ".equals(normalized)) {
+            return normalized;
+        }
+        return "AZ";
+    }
+
+    /**
+     * Delivers in-app notifications to all users and sends push when Firebase + devices exist.
+     * Unlike {@link #sendPushToUser}, this does not require HAVE_SESSIONS (marketing / system broadcasts).
+     */
+    private void deliverToUsersWithoutSessionGate(List<Long> userIds, String title, String body, Map<String, String> data) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+
+        for (int start = 0; start < userIds.size(); start += PUSH_BATCH_SIZE) {
+            int end = Math.min(start + PUSH_BATCH_SIZE, userIds.size());
+            List<Long> batch = userIds.subList(start, end);
+
+            List<java.util.concurrent.CompletableFuture<Void>> futures = batch.stream()
+                    .map(userId -> java.util.concurrent.CompletableFuture.runAsync(
+                            () -> self.deliverNotificationIgnoringSession(userId, title, body, data), taskExecutor))
+                    .toList();
+
+            java.util.concurrent.CompletableFuture.allOf(
+                    futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
         }
     }
 
-    /** Number of users pushed concurrently per batch. Keeps in-flight tasks below the
-     *  executor's capacity so large bulk sends (hundreds of users) never overwhelm the pool. */
-    private static final int PUSH_BATCH_SIZE = 50;
+    @Transactional
+    public void deliverNotificationIgnoringSession(Long userId, String title, String body, Map<String, String> data) {
+        Notification notification = savePendingNotification(userId, title, body);
+        Long notificationId = notification.getId();
+
+        if (firebaseMessaging.isEmpty()) {
+            updateNotificationStatus(notificationId, NotificationStatus.SENT, 0, 0, "Push service inactive; in-app only");
+            return;
+        }
+
+        List<String> tokens = deviceRepository.findPushTokensByUserId(userId);
+        if (tokens.isEmpty()) {
+            updateNotificationStatus(notificationId, NotificationStatus.SENT, 0, 0, "No registered devices; in-app only");
+            return;
+        }
+
+        Map<String, String> payload = data != null ? data : Collections.emptyMap();
+        MulticastSendResult sendResult = sendMulticastInChunks(tokens, title, body, payload);
+        cleanupTokensAndUpdateStatus(
+                userId,
+                notificationId,
+                sendResult.staleTokens(),
+                sendResult.sentCount(),
+                sendResult.failedCount(),
+                sendResult.failureReason());
+    }
 
     public List<PushResult> sendPushToUsers(List<Long> userIds, String title, String body, Map<String, String> data) {
         if (userIds == null || userIds.isEmpty()) {
@@ -333,13 +447,95 @@ public class NotificationServiceImpl implements NotificationService {
                     .putAllData(payload)
                     .build();
 
-            String response = firebaseMessaging.get().send(message);
+            firebaseMessaging.get().send(message);
         } catch (FirebaseMessagingException e) {
-            String errorCode = e.getMessagingErrorCode().name();
-            if ("UNREGISTERED".equals(errorCode) || "INVALID_ARGUMENT".equals(errorCode)) {
+            if (isStaleTokenError(fcmErrorCode(e))) {
                 deviceRepository.deleteByPushToken(token);
             }
         }
+    }
+
+    private record MulticastSendResult(int sentCount, int failedCount, List<String> staleTokens, String failureReason) {
+    }
+
+    private MulticastSendResult sendMulticastInChunks(List<String> tokens, String title, String body, Map<String, String> data) {
+        if (firebaseMessaging.isEmpty() || tokens == null || tokens.isEmpty()) {
+            return new MulticastSendResult(0, 0, Collections.emptyList(), null);
+        }
+
+        int sentCount = 0;
+        int failedCount = 0;
+        List<String> staleTokens = new ArrayList<>();
+        String failureReason = null;
+        Map<String, String> payload = data != null ? data : Collections.emptyMap();
+
+        for (int start = 0; start < tokens.size(); start += FCM_MULTICAST_LIMIT) {
+            int end = Math.min(start + FCM_MULTICAST_LIMIT, tokens.size());
+            List<String> chunk = tokens.subList(start, end);
+
+            MulticastMessage message = MulticastMessage.builder()
+                    .addAllTokens(chunk)
+                    .setNotification(com.google.firebase.messaging.Notification.builder()
+                            .setTitle(title)
+                            .setBody(body)
+                            .build())
+                    .putAllData(payload)
+                    .setAndroidConfig(AndroidConfig.builder()
+                            .setPriority(AndroidConfig.Priority.HIGH)
+                            .setNotification(AndroidNotification.builder()
+                                    .setDefaultSound(true)
+                                    .setDefaultVibrateTimings(true)
+                                    .build())
+                            .build())
+                    .setApnsConfig(ApnsConfig.builder()
+                            .setAps(Aps.builder()
+                                    .setSound("default")
+                                    .setBadge(1)
+                                    .setContentAvailable(true)
+                                    .build())
+                            .build())
+                    .build();
+
+            try {
+                BatchResponse response = firebaseMessaging.get().sendEachForMulticast(message);
+                sentCount += response.getSuccessCount();
+                failedCount += response.getFailureCount();
+
+                if (response.getFailureCount() > 0) {
+                    List<SendResponse> responses = response.getResponses();
+                    for (int i = 0; i < responses.size(); i++) {
+                        SendResponse sendResponse = responses.get(i);
+                        if (!sendResponse.isSuccessful()) {
+                            String errorCode = fcmErrorCode(sendResponse.getException());
+                            if (isStaleTokenError(errorCode)) {
+                                staleTokens.add(chunk.get(i));
+                            }
+                        }
+                    }
+                }
+            } catch (FirebaseMessagingException e) {
+                failedCount += chunk.size();
+                failureReason = e.getMessage();
+                logger.error("Firebase messaging error during multicast chunk: {}", e.getMessage(), e);
+            } catch (Exception e) {
+                failedCount += chunk.size();
+                failureReason = e.getMessage();
+                logger.error("Unexpected error during multicast chunk: {}", e.getMessage(), e);
+            }
+        }
+
+        return new MulticastSendResult(sentCount, failedCount, staleTokens, failureReason);
+    }
+
+    private static String fcmErrorCode(FirebaseMessagingException e) {
+        if (e == null || e.getMessagingErrorCode() == null) {
+            return "";
+        }
+        return e.getMessagingErrorCode().name();
+    }
+
+    private static boolean isStaleTokenError(String errorCode) {
+        return "UNREGISTERED".equals(errorCode) || "INVALID_ARGUMENT".equals(errorCode);
     }
 
     @Transactional

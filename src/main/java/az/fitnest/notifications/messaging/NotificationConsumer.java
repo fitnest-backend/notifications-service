@@ -29,13 +29,25 @@ public class NotificationConsumer {
     public void consumeUserEvent(Map<String, Object> event) {
         String eventType = (String) event.get("eventType");
         Object userIdObj = event.get("userId");
-        if ("USER_HARD_DELETED".equals(eventType) && userIdObj != null) {
-            Long userId = parseUserId(userIdObj);
-            if (userId != null) {
-                log.warn("Received USER_HARD_DELETED event for userId: {}. Deleting user devices and notifications.", userId);
-                deviceRepository.deleteByUserId(userId);
-                notificationRepository.deleteAllByUserId(userId);
-            }
+        if (userIdObj == null || eventType == null) {
+            return;
+        }
+
+        Long userId = parseUserId(userIdObj);
+        if (userId == null) {
+            return;
+        }
+
+        if ("ACCOUNT_DEACTIVATED".equals(eventType) || "ACCOUNT_BLOCKED".equals(eventType)) {
+            int updated = deviceRepository.disableAllDevicesForUser(userId);
+            log.info("Received {}: disabled {} device(s) for userId={}", eventType, updated, userId);
+            return;
+        }
+
+        if ("USER_HARD_DELETED".equals(eventType)) {
+            log.warn("Received USER_HARD_DELETED event for userId: {}. Deleting user devices and notifications.", userId);
+            deviceRepository.deleteByUserId(userId);
+            notificationRepository.deleteAllByUserId(userId);
         }
     }
 
