@@ -138,14 +138,13 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public int broadcastLocalizedPushNotification(Map<String, LocalizedPushContent> contentsByLanguage,
-                                                  Map<String, String> data,
-                                                  List<String> roleNames) {
+                                                  Map<String, String> data) {
         Map<String, LocalizedBroadcastService.LocalizedContent> mapped = new HashMap<>();
         if (contentsByLanguage != null) {
             contentsByLanguage.forEach((lang, content) ->
                     mapped.put(lang, new LocalizedBroadcastService.LocalizedContent(content.title(), content.body())));
         }
-        return localizedBroadcastService.broadcast(mapped, data, roleNames);
+        return localizedBroadcastService.broadcast(mapped, data);
     }
 
     @Override

@@ -39,7 +39,9 @@ public class NotificationConsumer {
             return;
         }
 
-        if ("ACCOUNT_DEACTIVATED".equals(eventType) || "ACCOUNT_BLOCKED".equals(eventType)) {
+        if ("ACCOUNT_DEACTIVATED".equals(eventType)
+                || "ACCOUNT_BLOCKED".equals(eventType)
+                || "USER_LOGGED_OUT".equals(eventType)) {
             int updated = deviceRegistrationService.disableAllDevicesForUser(userId);
             log.info("Received {}: disabled {} device(s) for userId={}", eventType, updated, userId);
             return;

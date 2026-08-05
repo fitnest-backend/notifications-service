@@ -20,16 +20,15 @@ public interface NotificationService {
 
     /**
      * Broadcasts localized in-app (+ push when Firebase is available) notifications
-     * to all users matching the given roles (default ROLE_USER). Title/body are selected per user language.
+     * to every user with a current, notifications-enabled device. Title/body are selected per user language.
      *
      * @return number of target users
      */
     int broadcastLocalizedPushNotification(Map<String, LocalizedPushContent> contentsByLanguage,
-                                           Map<String, String> data,
-                                           java.util.List<String> roleNames);
+                                           Map<String, String> data);
 
     /**
-     * FR-27: notify ROLE_USER recipients (with push-enabled current devices) about a new Active gym.
+     * FR-27: notify every push-eligible user about a new Active gym.
      * Owns localized title/body templates.
      */
     int notifyNewGym(Long gymId, String gymName);

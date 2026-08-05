@@ -35,7 +35,7 @@ public class IdentityGrpcClient {
     }
 
     /**
-     * Batch-loads language (and role) for the given user ids.
+     * Batch-loads preferred language for the given user ids.
      * On partial/total failure, missing users default to language AZ.
      */
     public Map<Long, UserLanguageDto> getUsersLanguageByIds(List<Long> userIds) {
@@ -45,7 +45,7 @@ public class IdentityGrpcClient {
 
         Map<Long, UserLanguageDto> result = new HashMap<>();
         for (Long userId : userIds) {
-            result.put(userId, new UserLanguageDto(userId, "AZ", ""));
+            result.put(userId, new UserLanguageDto(userId, "AZ"));
         }
 
         for (int start = 0; start < userIds.size(); start += USER_LOOKUP_BATCH_SIZE) {
@@ -58,10 +58,7 @@ public class IdentityGrpcClient {
                                 .addAllUserIds(batch)
                                 .build());
                 for (UserResponse user : response.getUsersList()) {
-                    result.put(user.getUserId(), new UserLanguageDto(
-                            user.getUserId(),
-                            user.getLanguage(),
-                            user.getRole()));
+                    result.put(user.getUserId(), new UserLanguageDto(user.getUserId(), user.getLanguage()));
                 }
             } catch (Exception e) {
                 logger.warn("Failed to load user languages for batch starting at {}: {}. Falling back to AZ.",
@@ -71,6 +68,6 @@ public class IdentityGrpcClient {
         return result;
     }
 
-    public record UserLanguageDto(Long userId, String language, String role) {
+    public record UserLanguageDto(Long userId, String language) {
     }
 }

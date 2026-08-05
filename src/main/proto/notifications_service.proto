@@ -58,7 +58,6 @@ message LocalizedPushContent {
 message BroadcastLocalizedPushRequest {
   repeated LocalizedPushContent contents = 1;
   map<string, string> data = 2;
-  repeated string role_names = 3;
 }
 
 message BroadcastLocalizedPushResponse {

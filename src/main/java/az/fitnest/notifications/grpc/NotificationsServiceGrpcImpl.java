@@ -151,10 +151,7 @@ public class NotificationsServiceGrpcImpl extends NotificationsServiceGrpc.Notif
                                 content.getTitle(), content.getBody()));
             }
 
-            int targetUsers = localizedBroadcastService.broadcast(
-                    contents,
-                    request.getDataMap(),
-                    request.getRoleNamesList());
+            int targetUsers = localizedBroadcastService.broadcast(contents, request.getDataMap());
 
             BroadcastLocalizedPushResponse response = BroadcastLocalizedPushResponse.newBuilder()
                     .setSuccess(true)
