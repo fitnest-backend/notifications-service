@@ -33,12 +33,20 @@ public class LsimSmsService {
 
     public Long sendSms(String msisdn, String text, String sender,
                         Boolean unicode, String scheduled) {
+        System.out.println("[SMS CONFIG] enabled: " + properties.isEnabled());
         System.out.println("[SMS CONFIG] login: " + properties.getLogin());
         System.out.println("[SMS CONFIG] sender: " + sender);
 
         String normalizedMsisdn = msisdn.replaceAll("[^0-9]", "");
         if (!normalizedMsisdn.startsWith("994") && normalizedMsisdn.length() == 9) {
             normalizedMsisdn = "994" + normalizedMsisdn;
+        }
+
+        if (!properties.isEnabled()) {
+            System.out.println("[SMS MOCK] SMS_ENABLED=false — skipping LSIM."
+                    + " msisdn=" + normalizedMsisdn
+                    + " (clients should use mock OTP 0000 when identity SMS is also disabled)");
+            return 0L;
         }
 
         String md5Password = DigestUtils.md5Hex(properties.getPassword());
@@ -97,6 +105,10 @@ public class LsimSmsService {
     }
 
     public Integer checkBalance() {
+        if (!properties.isEnabled()) {
+            System.out.println("[SMS MOCK] SMS_ENABLED=false — returning mock balance 0");
+            return 0;
+        }
         String md5Password = DigestUtils.md5Hex(properties.getPassword());
         String key = DigestUtils.md5Hex(md5Password + properties.getLogin());
         String url = getUrl("balance") + "?login=" + properties.getLogin() + "&key=" + key;
@@ -112,6 +124,10 @@ public class LsimSmsService {
     }
 
     public SmsStatus getDeliveryStatus(Long transactionId) {
+        if (!properties.isEnabled()) {
+            System.out.println("[SMS MOCK] SMS_ENABLED=false — returning DELIVERED for txn " + transactionId);
+            return SmsStatus.DELIVERED;
+        }
         String url = getUrl("report") + "?login=" + properties.getLogin() + "&trans_id=" + transactionId;
 
         LsimApiResponse response = webClient.get()
@@ -124,6 +140,10 @@ public class LsimSmsService {
     }
 
     public SmsStatus getDeliveryStatusPost(Long transactionId) {
+        if (!properties.isEnabled()) {
+            System.out.println("[SMS MOCK] SMS_ENABLED=false — returning DELIVERED for txn " + transactionId);
+            return SmsStatus.DELIVERED;
+        }
         LsimReportRequest request = LsimReportRequest.builder()
                 .login(properties.getLogin())
                 .transid(transactionId)

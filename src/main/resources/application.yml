@@ -211,10 +211,12 @@ springdoc:
 # Lsim-sms
 lsim:
   sms:
+    # false = mock SMS (no LSIM call). Use with identity SMS_ENABLED=false → OTP 0000.
+    enabled: ${SMS_ENABLED:true}
     base-url: ${LSIM_SMS_BASE_URL:https://apps.lsim.az/quicksms/v1/}
-    login: ${SMS_LOGIN}
-    password: ${SMS_PASSWORD}
-    default-sender: ${SMS_SENDER}
+    login: ${SMS_LOGIN:}
+    password: ${SMS_PASSWORD:}
+    default-sender: ${SMS_SENDER:}
     default-unicode: false
 
 grpc:
